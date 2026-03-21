@@ -56,14 +56,36 @@ class _AddEditRehearsalSheetState extends State<AddEditRehearsalSheet> {
   }
 
   Future<void> pickFromTime() async {
-    final t = await showTimePicker(context: context, initialTime: _from);
+    final t = await showTimePicker(
+      context: context,
+      initialTime: _from,
+      builder: (BuildContext context, Widget? child) {
+        return MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: TextScaler.noScaling),
+          child: child ?? const SizedBox(),
+        );
+      },
+    );
     if (t != null && mounted) {
       setState(() => _from = t);
     }
   }
 
   Future<void> pickToTime() async {
-    final t = await showTimePicker(context: context, initialTime: _to);
+    final t = await showTimePicker(
+      context: context,
+      initialTime: _to,
+      builder: (BuildContext context, Widget? child) {
+        return MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: TextScaler.noScaling),
+          child: child ?? const SizedBox(),
+        );
+      },
+    );
     if (t != null && mounted) {
       setState(() => _to = t);
     }
