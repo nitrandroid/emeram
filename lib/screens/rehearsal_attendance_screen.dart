@@ -1,0 +1,192 @@
+import 'package:flutter/material.dart';
+import '../data/database.dart';
+import '../models/rehearsal.dart';
+import '../models/person.dart';
+import '../models/category.dart';
+
+class RehearsalAttendanceScreen extends StatefulWidget {
+  final Rehearsal rehearsal;
+
+  const RehearsalAttendanceScreen({super.key, required this.rehearsal});
+
+  @override
+  State<RehearsalAttendanceScreen> createState() =>
+      _RehearsalAttendanceScreenState();
+}
+
+class _RehearsalAttendanceScreenState extends State<RehearsalAttendanceScreen> {
+  List<Person> people = [];
+  List<Category> categories = [];
+  Set<int> present = {};
+  Set<int> originalPresent = {};
+  bool loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  bool get hasChanges =>
+      !(present.length == originalPresent.length &&
+          present.containsAll(originalPresent) &&
+          originalPresent.containsAll(present));
+
+  Future<void> _load() async {
+    final db = AppDatabase.instance;
+
+    // 1️⃣ fetch all people + categories
+    final allPeople = await db.fetchPersons();
+    final allCats = await db.fetchCategories();
+
+    // 2️⃣ filter active in date of rehearsal
+    final d = widget.rehearsal.date;
+
+    final active = allPeople.where((p) {
+      final fromOk =
+          p.fromDate == null ||
+          p.fromDate!.isBefore(d) ||
+          p.fromDate!.isAtSameMomentAs(d);
+      final toOk =
+          p.toDate == null ||
+          p.toDate!.isAfter(d) ||
+          p.toDate!.isAtSameMomentAs(d);
+      return fromOk && toOk;
+    }).toList();
+
+    // 3️⃣ fetch attendance
+    final presentIds = await db.fetchRehearsalAttendancePersonIds(
+      widget.rehearsal.id!,
+    );
+
+    setState(() {
+      people = active;
+      categories = allCats;
+      present = {...presentIds};
+      originalPresent = {...presentIds};
+      loading = false;
+    });
+  }
+
+  void _toggle(Person p, bool checked) {
+    setState(() {
+      if (checked) {
+        present.add(p.id!);
+      } else {
+        present.remove(p.id!);
+      }
+    });
+  }
+
+  Future<void> _save() async {
+    final db = AppDatabase.instance;
+
+    await db.replaceRehearsalAttendance(widget.rehearsal.id!, present);
+
+    setState(() {
+      originalPresent = {...present};
+    });
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text("Účasť uložená.")));
+  }
+
+  Future<void> _handleSaveOrClose() async {
+    if (!hasChanges) {
+      Navigator.pop(context);
+      return;
+    }
+
+    // 🔥 4️⃣ potvrdenie pred uložením
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Uložiť dochádzku?"),
+        content: const Text("Chystáte sa uložiť zmeny dochádzky."),
+        actions: [
+          TextButton(
+            child: const Text("Zrušiť"),
+            onPressed: () => Navigator.pop(context, false),
+          ),
+          FilledButton(
+            child: const Text("Uložiť"),
+            onPressed: () => Navigator.pop(context, true),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _save();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final r = widget.rehearsal;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          "Účasť – ${r.date.day.toString().padLeft(2, '0')}."
+          "${r.date.month.toString().padLeft(2, '0')}."
+          "${r.date.year}",
+        ),
+        actions: [
+          TextButton(
+            onPressed: _handleSaveOrClose,
+            child: Text(
+              hasChanges ? "Uložiť" : "Zavrieť",
+              style: const TextStyle(fontSize: 16),
+            ),
+          ),
+        ],
+      ),
+
+      body: loading
+          ? const Center(child: CircularProgressIndicator())
+          : _buildGroupedList(context),
+    );
+  }
+
+  // 🔥 3️⃣ Oddelenie podľa hlasových skupín
+  Widget _buildGroupedList(BuildContext context) {
+    // zoradenie kategórií podľa isDefault a potom názvu
+    final sortedCats = [
+      ...categories.where((c) => c.isDefault),
+      ...categories.where((c) => !c.isDefault),
+    ];
+
+    final List<Widget> widgets = [];
+
+    for (final cat in sortedCats) {
+      final groupPeople = people.where((p) => p.categoryId == cat.id).toList();
+
+      if (groupPeople.isEmpty) continue;
+
+      // názov hlasovej skupiny
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: Text(cat.name, style: Theme.of(context).textTheme.titleMedium),
+        ),
+      );
+
+      // členovia v skupine
+      for (final p in groupPeople) {
+        widgets.add(
+          CheckboxListTile(
+            title: Text("${p.firstName} ${p.lastName}"),
+            value: present.contains(p.id),
+            onChanged: (v) => _toggle(p, v ?? false),
+          ),
+        );
+      }
+    }
+
+    return ListView(children: widgets);
+  }
+}
