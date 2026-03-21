@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/person.dart';
 import '../models/category.dart';
+import '../widgets/responsive_root.dart';
 
 class PersonItem extends StatelessWidget {
   final Person person;
@@ -56,7 +57,13 @@ class PersonItem extends StatelessWidget {
                   ),
 
                 if (person.phone != null)
-                  Text(person.phone!, style: const TextStyle(fontSize: 12)),
+                  Flexible(
+                    child: Text(
+                      person.phone!,
+                      style: const TextStyle(fontSize: 12),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
               ],
             ),
           ],
@@ -98,39 +105,74 @@ class PersonItem extends StatelessWidget {
         ],
       ),
 
-      // 🔥 FIXNÁ ŠÍRKA → ikony sa nehýbu
-      trailing: SizedBox(
-        width: 160,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            if (person.phone != null && person.phone!.isNotEmpty)
+      trailing: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final isCompact = ResponsiveRoot.isCompact(width);
+
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Väčšie obrazovky → všetky akcie priamo
+              if (!isCompact &&
+                  person.phone != null &&
+                  person.phone!.isNotEmpty)
+                IconButton(
+                  icon: const Icon(Icons.phone),
+                  tooltip: 'Zavolať',
+                  onPressed: () => _confirmAndCall(context, person.phone!),
+                ),
+
+              if (!isCompact &&
+                  person.email != null &&
+                  person.email!.isNotEmpty)
+                IconButton(
+                  icon: const Icon(Icons.email),
+                  tooltip: 'Napísať e-mail',
+                  onPressed: () => _confirmAndEmail(context, person.email!),
+                ),
+
+              // Vždy dostupné hlavné akcie
               IconButton(
-                icon: const Icon(Icons.phone),
-                tooltip: 'Zavolať',
-                onPressed: () => _confirmAndCall(context, person.phone!),
+                icon: const Icon(Icons.edit),
+                tooltip: 'Upraviť',
+                onPressed: onEdit,
               ),
 
-            if (person.email != null && person.email!.isNotEmpty)
               IconButton(
-                icon: const Icon(Icons.email),
-                tooltip: 'Napísať e-mail',
-                onPressed: () => _confirmAndEmail(context, person.email!),
+                icon: const Icon(Icons.delete),
+                tooltip: 'Zmazať',
+                onPressed: onDelete,
               ),
 
-            IconButton(
-              icon: const Icon(Icons.edit),
-              tooltip: 'Upraviť',
-              onPressed: onEdit,
-            ),
-
-            IconButton(
-              icon: const Icon(Icons.delete),
-              tooltip: 'Zmazať',
-              onPressed: onDelete,
-            ),
-          ],
-        ),
+              // Kompaktný režim → menej používané akcie v menu
+              if (isCompact &&
+                  ((person.phone != null && person.phone!.isNotEmpty) ||
+                      (person.email != null && person.email!.isNotEmpty)))
+                PopupMenuButton<String>(
+                  onSelected: (value) {
+                    if (value == 'call') {
+                      _confirmAndCall(context, person.phone!);
+                    } else if (value == 'email') {
+                      _confirmAndEmail(context, person.email!);
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    if (person.phone != null && person.phone!.isNotEmpty)
+                      const PopupMenuItem(
+                        value: 'call',
+                        child: Text('Zavolať'),
+                      ),
+                    if (person.email != null && person.email!.isNotEmpty)
+                      const PopupMenuItem(
+                        value: 'email',
+                        child: Text('Napísať e-mail'),
+                      ),
+                  ],
+                ),
+            ],
+          );
+        },
       ),
 
       onTap: onEdit,
