@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:flutter/services.dart'; // ← TOTO PRIDAJ
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
@@ -21,225 +22,39 @@ class AppDatabase {
   }
 
   Future<Database> _initDb() async {
-    final dbPath = await getDatabasesPath();
-    final path = join(dbPath, 'emeram.db');
+    // Zistenie runtime cesty pre databázu
+    final databasesPath = await getDatabasesPath();
+    final path = join(databasesPath, 'emeram.db');
 
+    // Skontroluj, či runtime databáza existuje
+    final exists = await databaseExists(path);
+
+    // Ak neexistuje → skopíruj ju z assets
+    if (!exists) {
+      try {
+        // Načítaj databázu z assets
+        final data = await rootBundle.load('assets/db/emeram.db');
+        final bytes = data.buffer.asUint8List(
+          data.offsetInBytes,
+          data.lengthInBytes,
+        );
+
+        // Vytvor priečinok, ak treba
+        await Directory(databasesPath).create(recursive: true);
+
+        // Zapíš DB na runtime cestu
+        await File(path).writeAsBytes(bytes, flush: true);
+      } catch (_) {
+        // nechávame ticho, bez logu
+      }
+    }
+
+    // Otvor databázu
     return await openDatabase(
       path,
       version: 1,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
-      },
-
-      onCreate: (db, version) async {
-        // ============================================================
-        // REHEARSAL SONGS
-        // ============================================================
-        await db.execute('''
-  CREATE TABLE rehearsal_songs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    rehearsalId INTEGER NOT NULL,
-    songId INTEGER NOT NULL,
-    createdAt TEXT NOT NULL,
-    FOREIGN KEY (rehearsalId) REFERENCES rehearsals(id) ON DELETE CASCADE,
-    FOREIGN KEY (songId) REFERENCES songs(id) ON DELETE CASCADE
-  )
-''');
-
-        // ============================================================
-        // CATEGORY TABLE (PEOPLE)
-        // ============================================================
-        await db.execute('''
-          CREATE TABLE categories (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            color INTEGER NOT NULL,
-            isDefault INTEGER NOT NULL,
-            singersCount INTEGER NOT NULL DEFAULT 0
-          )
-        ''');
-
-        // DEFAULT PEOPLE CATEGORIES (SATB)
-        await db.insert('categories', {
-          'name': 'Soprán',
-          'color': Colors.pink.toARGB32(),
-          'isDefault': 0,
-        });
-        await db.insert('categories', {
-          'name': 'Alt',
-          'color': Colors.purple.toARGB32(),
-          'isDefault': 0,
-        });
-        await db.insert('categories', {
-          'name': 'Tenor',
-          'color': Colors.blue.toARGB32(),
-          'isDefault': 1,
-        });
-        await db.insert('categories', {
-          'name': 'Bas',
-          'color': Colors.brown.toARGB32(),
-          'isDefault': 0,
-        });
-
-        // ============================================================
-        // PERSON TABLE
-        // ============================================================
-        await db.execute('''
-          CREATE TABLE persons (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            firstName TEXT NOT NULL,
-            lastName TEXT NOT NULL,
-            email TEXT,
-            phone TEXT,
-            categoryId INTEGER NOT NULL,
-            fromDate TEXT,
-            toDate TEXT,
-            createdAt TEXT,
-            FOREIGN KEY (categoryId)
-              REFERENCES categories(id)
-              ON DELETE RESTRICT
-              ON UPDATE CASCADE
-          )
-        ''');
-
-        // TRIGGERS (PEOPLE)
-        await db.execute('''
-          CREATE TRIGGER trg_persons_insert
-          AFTER INSERT ON persons
-          BEGIN
-            UPDATE categories
-            SET singersCount = singersCount + 1
-            WHERE id = NEW.categoryId;
-          END;
-        ''');
-
-        await db.execute('''
-          CREATE TRIGGER trg_persons_update
-          AFTER UPDATE ON persons
-          WHEN OLD.categoryId != NEW.categoryId
-          BEGIN
-            UPDATE categories
-            SET singersCount = singersCount - 1
-            WHERE id = OLD.categoryId;
-
-            UPDATE categories
-            SET singersCount = singersCount + 1
-            WHERE id = NEW.categoryId;
-          END;
-        ''');
-
-        await db.execute('''
-          CREATE TRIGGER trg_persons_delete
-          AFTER DELETE ON persons
-          BEGIN
-            UPDATE categories
-            SET singersCount = singersCount - 1
-            WHERE id = OLD.categoryId;
-          END;
-        ''');
-
-        // ============================================================
-        // SONG CATEGORY TABLE
-        // ============================================================
-        await db.execute('''
-          CREATE TABLE song_categories (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            color INTEGER NOT NULL,
-            songsCount INTEGER NOT NULL DEFAULT 0,
-            isDefault INTEGER NOT NULL DEFAULT 0
-          )
-        ''');
-
-        // DEFAULT SONG CATEGORY
-        await db.insert('song_categories', {
-          'id': 1,
-          'name': 'bez kategórie',
-          'color': Colors.grey.toARGB32(),
-          'songsCount': 0,
-          'isDefault': 1,
-        });
-
-        // ============================================================
-        // SONG TABLE
-        // ============================================================
-        await db.execute('''
-          CREATE TABLE songs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            author TEXT,
-            arranger TEXT,
-            language TEXT,
-            categoryId INTEGER NOT NULL,
-            firstRehearsalDate TEXT,
-            createdAt TEXT NOT NULL,
-            FOREIGN KEY (categoryId)
-              REFERENCES song_categories(id)
-              ON DELETE RESTRICT
-              ON UPDATE CASCADE
-          )
-        ''');
-
-        // TRIGGERS (SONGS)
-        await db.execute('''
-          CREATE TRIGGER trg_songs_insert
-          AFTER INSERT ON songs
-          BEGIN
-            UPDATE song_categories
-            SET songsCount = songsCount + 1
-            WHERE id = NEW.categoryId;
-          END;
-        ''');
-
-        await db.execute('''
-          CREATE TRIGGER trg_songs_update
-          AFTER UPDATE ON songs
-          WHEN OLD.categoryId != NEW.categoryId
-          BEGIN
-            UPDATE song_categories
-            SET songsCount = songsCount - 1
-            WHERE id = OLD.categoryId;
-
-            UPDATE song_categories
-            SET songsCount = songsCount + 1
-            WHERE id = NEW.categoryId;
-          END;
-        ''');
-
-        await db.execute('''
-          CREATE TRIGGER trg_songs_delete
-          AFTER DELETE ON songs
-          BEGIN
-            UPDATE song_categories
-            SET songsCount = songsCount - 1
-            WHERE id = OLD.categoryId;
-          END;
-        ''');
-
-        // ============================================================
-        // REHEARSALS TABLE
-        // ============================================================
-        await db.execute('''
-  CREATE TABLE rehearsals (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    date TEXT NOT NULL,
-    fromTime TEXT NOT NULL,
-    toTime TEXT NOT NULL,
-    place TEXT NOT NULL,
-    createdAt TEXT NOT NULL
-  )
-''');
-
-        await db.execute('''
-  CREATE TABLE rehearsal_attendance (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    rehearsalId INTEGER NOT NULL,
-    personId INTEGER NOT NULL,
-    createdAt TEXT NOT NULL,
-    FOREIGN KEY (rehearsalId) REFERENCES rehearsals(id) ON DELETE CASCADE,
-    FOREIGN KEY (personId) REFERENCES persons(id) ON DELETE CASCADE
-  )
-''');
       },
     );
   }

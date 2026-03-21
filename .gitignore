@@ -43,3 +43,12 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# SQLite temporary files – IGNORUJEME
+*.db-shm
+*.db-wal
+*.sqlite-shm
+*.sqlite-wal
+
+# SQLite databázové súbory – NEIGNORUJEME
+# (preto tu NIE JE *.db ani *.sqlite)
