@@ -7,6 +7,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'screens/home_screen.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'widgets/responsive_root.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,7 +20,7 @@ void main() {
 
   // Android + iOS používajú normálny sqflite → nič netreba inicializovať
 
-  runApp(const ResponsiveRoot(child: EmeramApp()));
+  runApp(const ProviderScope(child: ResponsiveRoot(child: EmeramApp())));
 }
 
 class EmeramApp extends StatelessWidget {
@@ -42,16 +43,18 @@ class EmeramApp extends StatelessWidget {
 
       localeResolutionCallback: (locale, supportedLocales) {
         // 1. full match (language + country)
+        if (locale == null) return supportedLocales.first;
+
         for (var supported in supportedLocales) {
-          if (supported.languageCode == locale?.languageCode &&
-              supported.countryCode == locale?.countryCode) {
+          if (supported.languageCode == locale.languageCode &&
+              supported.countryCode == locale.countryCode) {
             return supported;
           }
         }
 
         // 2. language-only match
         for (var supported in supportedLocales) {
-          if (supported.languageCode == locale?.languageCode) {
+          if (supported.languageCode == locale.languageCode) {
             return supported;
           }
         }
