@@ -1,19 +1,18 @@
 import 'package:flutter/material.dart';
-import '../data/database.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/database_provider.dart';
 import '../models/category.dart';
 import '../utils/slovak_sort.dart';
 
-
-class CategoryManagerScreen extends StatefulWidget {
-  final AppDatabase db;
-
-  const CategoryManagerScreen({super.key, required this.db});
+class CategoryManagerScreen extends ConsumerStatefulWidget {
+  const CategoryManagerScreen({super.key});
 
   @override
-  State<CategoryManagerScreen> createState() => _CategoryManagerScreenState();
+  ConsumerState<CategoryManagerScreen> createState() =>
+      _CategoryManagerScreenState();
 }
 
-class _CategoryManagerScreenState extends State<CategoryManagerScreen> {
+class _CategoryManagerScreenState extends ConsumerState<CategoryManagerScreen> {
   List<Category> categories = [];
   bool loading = true;
 
@@ -24,7 +23,7 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen> {
   }
 
   Future<void> _loadCategories() async {
-    final db = widget.db;
+    final db = ref.read(appDatabaseProvider);
     final cats = await db.fetchCategories();
 
     // načítame všetkých ľudí
@@ -146,7 +145,7 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen> {
                       onPressed: () async {
                         if (nameCtrl.text.trim().isEmpty) return;
 
-                        final db = widget.db;
+                        final db = ref.read(appDatabaseProvider);
                         Navigator.pop(context);
 
                         if (existing == null) {
@@ -186,7 +185,7 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen> {
   // DELETE
   // -------------------------------------------------------------
   Future<void> _deleteCategory(Category c) async {
-    final db = widget.db;
+    final db = ref.read(appDatabaseProvider);
 
     if (c.singersCount > 0) {
       ScaffoldMessenger.of(context).showSnackBar(

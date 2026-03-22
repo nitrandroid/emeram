@@ -1,26 +1,22 @@
 import 'package:flutter/material.dart';
-import '../data/database.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/database_provider.dart';
 import '../models/rehearsal.dart';
 import '../models/song.dart';
 import '../models/song_category.dart';
 
-class RehearsalRepertoireScreen extends StatefulWidget {
+class RehearsalRepertoireScreen extends ConsumerStatefulWidget {
   final Rehearsal rehearsal;
-  final AppDatabase db;
 
-  const RehearsalRepertoireScreen({
-    super.key,
-
-    required this.rehearsal,
-    required this.db,
-  });
+  const RehearsalRepertoireScreen({super.key, required this.rehearsal});
 
   @override
-  State<RehearsalRepertoireScreen> createState() =>
+  ConsumerState<RehearsalRepertoireScreen> createState() =>
       _RehearsalRepertoireScreenState();
 }
 
-class _RehearsalRepertoireScreenState extends State<RehearsalRepertoireScreen> {
+class _RehearsalRepertoireScreenState
+    extends ConsumerState<RehearsalRepertoireScreen> {
   List<Song> songs = [];
   List<SongCategory> categories = [];
   Set<int> selected = {};
@@ -39,7 +35,7 @@ class _RehearsalRepertoireScreenState extends State<RehearsalRepertoireScreen> {
   }
 
   Future<void> _load() async {
-    final db = widget.db;
+    final db = ref.read(appDatabaseProvider);
 
     final allSongs = await db.fetchSongs();
     final allCats = await db.fetchSongCategories();
@@ -65,7 +61,7 @@ class _RehearsalRepertoireScreenState extends State<RehearsalRepertoireScreen> {
   }
 
   Future<void> _save() async {
-    final db = widget.db;
+    final db = ref.read(appDatabaseProvider);
 
     await db.replaceRehearsalSongs(widget.rehearsal.id!, selected);
 

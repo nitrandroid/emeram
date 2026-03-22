@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
-import '../data/database.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/database_provider.dart';
 import '../models/rehearsal.dart';
 import '../models/person.dart';
 import '../widgets/add_edit_rehearsal_sheet.dart';
 import 'rehearsal_attendance_screen.dart';
 import 'rehearsal_repertoire_screen.dart';
 
-class RehearsalsScreen extends StatefulWidget {
-  final AppDatabase db;
-  const RehearsalsScreen({super.key, required this.db});
+class RehearsalsScreen extends ConsumerStatefulWidget {
+  const RehearsalsScreen({super.key});
 
   @override
-  State<RehearsalsScreen> createState() => _RehearsalsScreenState();
+  ConsumerState<RehearsalsScreen> createState() => _RehearsalsScreenState();
 }
 
-class _RehearsalsScreenState extends State<RehearsalsScreen> {
+class _RehearsalsScreenState extends ConsumerState<RehearsalsScreen> {
   List<Rehearsal> rehearsals = [];
   Map<int, int> presentCount = {}; // rehearsalId → prítomní
   Map<int, int> activeCount = {}; // rehearsalId → aktívni
@@ -30,7 +30,7 @@ class _RehearsalsScreenState extends State<RehearsalsScreen> {
   }
 
   Future<void> _load() async {
-    final db = widget.db;
+    final db = ref.read(appDatabaseProvider);
 
     final allRehearsals = await db.fetchRehearsals();
     final List<Person> allPeople = await db.fetchPersons();
@@ -139,7 +139,7 @@ class _RehearsalsScreenState extends State<RehearsalsScreen> {
             builder: (_) {
               return AddEditRehearsalSheet(
                 onSubmit: (r) async {
-                  final db = widget.db;
+                  final db = ref.read(appDatabaseProvider);
                   await db.addRehearsal(r);
                   await _load();
                 },
@@ -190,7 +190,7 @@ class _RehearsalsScreenState extends State<RehearsalsScreen> {
                               return AddEditRehearsalSheet(
                                 existing: r,
                                 onSubmit: (updated) async {
-                                  final db = widget.db;
+                                  final db = ref.read(appDatabaseProvider);
                                   await db.updateRehearsal(updated);
                                   await _load();
                                 },
@@ -229,7 +229,7 @@ class _RehearsalsScreenState extends State<RehearsalsScreen> {
                             );
 
                             if (confirm == true) {
-                              final db = widget.db;
+                              final db = ref.read(appDatabaseProvider);
                               await db.deleteRehearsal(r.id!);
                               await _load();
                             }
@@ -244,10 +244,8 @@ class _RehearsalsScreenState extends State<RehearsalsScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => RehearsalRepertoireScreen(
-                                rehearsal: r,
-                                db: widget.db,
-                              ),
+                              builder: (_) =>
+                                  RehearsalRepertoireScreen(rehearsal: r),
                             ),
                           );
                         },
@@ -261,10 +259,8 @@ class _RehearsalsScreenState extends State<RehearsalsScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => RehearsalAttendanceScreen(
-                                rehearsal: r,
-                                db: widget.db,
-                              ),
+                              builder: (_) =>
+                                  RehearsalAttendanceScreen(rehearsal: r),
                             ),
                           ).then((_) => _load());
                         },
@@ -282,7 +278,7 @@ class _RehearsalsScreenState extends State<RehearsalsScreen> {
                         return AddEditRehearsalSheet(
                           existing: r,
                           onSubmit: (updated) async {
-                            final db = widget.db;
+                            final db = ref.read(appDatabaseProvider);
                             await db.updateRehearsal(updated);
                             await _load();
                           },

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import '../data/database.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/database_provider.dart';
+import '../providers/people_provider.dart';
+import '../providers/categories_provider.dart';
 import '../models/person.dart';
 import '../models/category.dart';
 import '../widgets/add_edit_person_sheet.dart';
@@ -17,20 +20,15 @@ enum SortDirection { ascending, descending }
 // AKTÍVNI/NEAKTÍVNI
 enum ActivityFilter { all, active, inactive }
 
-class PeopleScreen extends StatefulWidget {
-  final dynamic db;
-
-  const PeopleScreen({super.key, this.db});
+class PeopleScreen extends ConsumerStatefulWidget {
+  const PeopleScreen({super.key});
 
   @override
-  State<PeopleScreen> createState() => _PeopleScreenState();
+  ConsumerState<PeopleScreen> createState() => _PeopleScreenState();
 }
 
-class _PeopleScreenState extends State<PeopleScreen> {
-  List<Person> persons = [];
-  List<Category> categories = [];
+class _PeopleScreenState extends ConsumerState<PeopleScreen> {
   int? selectedCategoryId;
-  bool loading = true;
 
   SortMode sortMode = SortMode.lastName;
   SortDirection sortDirection = SortDirection.ascending;
@@ -42,82 +40,6 @@ class _PeopleScreenState extends State<PeopleScreen> {
   void dispose() {
     _scrollController.dispose();
     super.dispose();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _loadAll();
-  }
-
-  Future<void> _loadAll() async {
-    final AppDatabase db = widget.db;
-
-    try {
-      final catsFuture = db.fetchCategories();
-      final peopsFuture = db.fetchPersons();
-
-      final cats = await catsFuture;
-      final peops = await peopsFuture;
-
-      if (!mounted) return;
-
-      setState(() {
-        categories = cats;
-        persons = peops;
-        loading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-
-      setState(() {
-        categories = [];
-        persons = [];
-        loading = false;
-      });
-
-      debugPrint("LOAD ERROR: $e");
-    }
-  }
-
-  // ----------------------
-  // FILTER + SORT
-  // ----------------------
-  List<Person> get filteredPersons {
-    List<Person> list = selectedCategoryId == null
-        ? [...persons]
-        : persons.where((p) => p.categoryId == selectedCategoryId).toList();
-
-    list = switch (activityFilter) {
-      ActivityFilter.active => list.where((p) => p.toDate == null).toList(),
-      ActivityFilter.inactive => list.where((p) => p.toDate != null).toList(),
-      ActivityFilter.all => list,
-    };
-
-    // 🔥 chain sa vytvára iba raz
-    late final List<int Function(Person, Person)> chain;
-
-    switch (sortMode) {
-      case SortMode.lastName:
-        chain = [compareLastName, compareFirstName, compareId];
-        break;
-
-      case SortMode.fromDate:
-        chain = [compareFromDate, compareLastName, compareFirstName, compareId];
-        break;
-
-      case SortMode.toDate:
-        chain = [compareToDate, compareLastName, compareFirstName, compareId];
-        break;
-    }
-
-    int comparator(Person a, Person b) {
-      final result = chainCompare(chain, a, b); // 🔥 z utilu
-      return sortDirection == SortDirection.descending ? -result : result;
-    }
-
-    list.sort(comparator);
-    return list;
   }
 
   // ----------------------
@@ -147,11 +69,11 @@ class _PeopleScreenState extends State<PeopleScreen> {
       useSafeArea: true,
       builder: (ctx) {
         return AddEditPersonSheet(
-          categories: categories,
+          categories: ref.read(categoriesProvider).value ?? [],
           onSubmit: (person) async {
-            final db = widget.db;
+            final db = ref.read(appDatabaseProvider);
             await db.addPerson(person);
-            await _loadAll();
+            ref.invalidate(peopleProvider);
 
             setState(() {
               sortMode = SortMode.lastName;
@@ -183,12 +105,12 @@ class _PeopleScreenState extends State<PeopleScreen> {
       useSafeArea: true,
       builder: (ctx) {
         return AddEditPersonSheet(
-          categories: categories,
+          categories: ref.read(categoriesProvider).value ?? [],
           existing: existing,
           onSubmit: (updated) async {
-            final db = widget.db;
+            final db = ref.read(appDatabaseProvider);
             await db.updatePerson(updated);
-            await _loadAll();
+            ref.invalidate(peopleProvider);
           },
         );
       },
@@ -199,9 +121,9 @@ class _PeopleScreenState extends State<PeopleScreen> {
   // DELETE
   // ---------------------------------------------------------------
   Future<void> _deletePerson(Person p) async {
-    final db = widget.db;
+    final db = ref.read(appDatabaseProvider);
     await db.deletePerson(p.id!);
-    await _loadAll();
+    ref.invalidate(peopleProvider);
   }
 
   Future<void> confirmAndDelete(Person p) async {
@@ -235,6 +157,43 @@ class _PeopleScreenState extends State<PeopleScreen> {
   // ---------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
+    final peopleAsync = ref.watch(peopleProvider);
+    final categoriesAsync = ref.watch(categoriesProvider);
+    final providerPersons = peopleAsync.value ?? [];
+    final providerCategories = categoriesAsync.value ?? [];
+
+    List<Person> filteredPersons = selectedCategoryId == null
+        ? [...providerPersons]
+        : providerPersons
+              .where((p) => p.categoryId == selectedCategoryId)
+              .toList();
+
+    filteredPersons = switch (activityFilter) {
+      ActivityFilter.active =>
+        filteredPersons.where((p) => p.toDate == null).toList(),
+      ActivityFilter.inactive =>
+        filteredPersons.where((p) => p.toDate != null).toList(),
+      ActivityFilter.all => filteredPersons,
+    };
+
+    late final List<int Function(Person, Person)> chain;
+
+    switch (sortMode) {
+      case SortMode.lastName:
+        chain = [compareLastName, compareFirstName, compareId];
+        break;
+      case SortMode.fromDate:
+        chain = [compareFromDate, compareLastName, compareFirstName, compareId];
+        break;
+      case SortMode.toDate:
+        chain = [compareToDate, compareLastName, compareFirstName, compareId];
+        break;
+    }
+
+    filteredPersons.sort((a, b) {
+      final result = chainCompare(chain, a, b);
+      return sortDirection == SortDirection.descending ? -result : result;
+    });
     return Scaffold(
       appBar: AppBar(
         title: const Text("Členovia zboru"),
@@ -288,9 +247,9 @@ class _PeopleScreenState extends State<PeopleScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => CategoryManagerScreen(db: widget.db),
+                  builder: (_) => const CategoryManagerScreen(),
                 ),
-              ).then((_) => _loadAll());
+              ).then((_) => ref.invalidate(peopleProvider));
             },
           ),
         ],
@@ -301,7 +260,7 @@ class _PeopleScreenState extends State<PeopleScreen> {
         child: const Icon(Icons.person_add),
       ),
 
-      body: loading
+      body: peopleAsync.isLoading
           ? const Center(child: CircularProgressIndicator())
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -312,7 +271,7 @@ class _PeopleScreenState extends State<PeopleScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       CategoryChipFilter(
-                        categories: categories,
+                        categories: providerCategories,
                         selectedId: selectedCategoryId,
                         onSelected: (id) {
                           setState(() => selectedCategoryId = id);
@@ -368,7 +327,7 @@ class _PeopleScreenState extends State<PeopleScreen> {
                           itemBuilder: (ctx, i) {
                             final person = filteredPersons[i];
 
-                            final category = categories.firstWhere(
+                            final category = providerCategories.firstWhere(
                               (c) => c.id == person.categoryId,
                               orElse: () => Category(
                                 id: 0,

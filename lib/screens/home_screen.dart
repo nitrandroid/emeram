@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'people_screen.dart';
 import 'songs_screen.dart';
 import 'rehearsals_screen.dart';
-import '../data/database.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -76,10 +75,7 @@ class HomeScreen extends StatelessWidget {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        PeopleScreen(db: AppDatabase.instance),
-                  ),
+                  MaterialPageRoute(builder: (_) => const PeopleScreen()),
                 );
               },
             ),
@@ -106,9 +102,7 @@ class HomeScreen extends StatelessWidget {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => RehearsalsScreen(db: AppDatabase.instance),
-                  ),
+                  MaterialPageRoute(builder: (_) => const RehearsalsScreen()),
                 );
               },
             ),

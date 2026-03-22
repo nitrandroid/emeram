@@ -1,25 +1,25 @@
 import 'package:flutter/material.dart';
-import '../data/database.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/rehearsal.dart';
 import '../models/person.dart';
 import '../models/category.dart';
+import '../providers/database_provider.dart';
 
-class RehearsalAttendanceScreen extends StatefulWidget {
+class RehearsalAttendanceScreen extends ConsumerStatefulWidget {
   final Rehearsal rehearsal;
-  final AppDatabase db;
 
   const RehearsalAttendanceScreen({
     super.key,
     required this.rehearsal,
-    required this.db,
   });
 
   @override
-  State<RehearsalAttendanceScreen> createState() =>
+  ConsumerState<RehearsalAttendanceScreen> createState() =>
       _RehearsalAttendanceScreenState();
 }
 
-class _RehearsalAttendanceScreenState extends State<RehearsalAttendanceScreen> {
+class _RehearsalAttendanceScreenState
+    extends ConsumerState<RehearsalAttendanceScreen> {
   List<Person> people = [];
   List<Category> categories = [];
   Set<int> present = {};
@@ -38,7 +38,7 @@ class _RehearsalAttendanceScreenState extends State<RehearsalAttendanceScreen> {
           originalPresent.containsAll(present));
 
   Future<void> _load() async {
-    final db = widget.db;
+    final db = ref.read(appDatabaseProvider);
 
     // 1️⃣ fetch all people + categories
     final allPeople = await db.fetchPersons();
@@ -84,7 +84,7 @@ class _RehearsalAttendanceScreenState extends State<RehearsalAttendanceScreen> {
   }
 
   Future<void> _save() async {
-    final db = widget.db;
+    final db = ref.read(appDatabaseProvider);
 
     await db.replaceRehearsalAttendance(widget.rehearsal.id!, present);
 
