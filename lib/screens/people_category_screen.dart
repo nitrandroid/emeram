@@ -3,6 +3,7 @@ import '../data/database.dart';
 import '../models/category.dart';
 import '../utils/slovak_sort.dart';
 
+
 class CategoryManagerScreen extends StatefulWidget {
   const CategoryManagerScreen({super.key});
 
@@ -24,7 +25,10 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen> {
     final db = AppDatabase.instance;
     final cats = await db.fetchCategories();
 
-    // 🔥 SATB poradie
+    // načítame všetkých ľudí
+    final persons = await db.fetchPersons();
+
+    // SATB poradie
     const satbOrder = ["Soprán", "Alt", "Tenor", "Bas"];
 
     final satbCats = cats.where((c) => satbOrder.contains(c.name)).toList()
@@ -36,8 +40,25 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen> {
     final otherCats = cats.where((c) => !satbOrder.contains(c.name)).toList()
       ..sort((a, b) => slovakCompare(a.name, b.name));
 
+    // 🔥 doplnenie počtov
+    final withCounts = [...satbCats, ...otherCats].map((c) {
+      final active = persons
+          .where((p) => p.categoryId == c.id && p.toDate == null)
+          .length;
+
+      final inactive = persons
+          .where((p) => p.categoryId == c.id && p.toDate != null)
+          .length;
+
+      return c.copyWith(
+        singersCount: active + inactive,
+        activeCount: active,
+        inactiveCount: inactive,
+      );
+    }).toList();
+
     setState(() {
-      categories = [...satbCats, ...otherCats];
+      categories = withCounts;
       loading = false;
     });
   }
@@ -97,7 +118,8 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen> {
                           Colors.green,
                           Colors.grey,
                         ].map((c) {
-                          final selected = c.toARGB32() == selectedColor.toARGB32();
+                          final selected =
+                              c.toARGB32() == selectedColor.toARGB32();
                           return GestureDetector(
                             onTap: () => setModal(() => selectedColor = c),
                             child: Container(
@@ -212,7 +234,9 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen> {
                   ),
 
                   title: Text(c.name),
-                  subtitle: Text("Členov: ${c.singersCount}"),
+                  subtitle: Text(
+                    "Aktívni: ${c.activeCount} · Neaktívni: ${c.inactiveCount} · Spolu: ${c.singersCount}",
+                  ),
 
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,

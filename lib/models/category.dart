@@ -1,9 +1,12 @@
 class Category {
-  final int? id; // nullable for autoincrement
+  final int? id;
   final String name;
   final int color;
   final bool isDefault;
   final int singersCount;
+
+  final int activeCount;
+  final int inactiveCount;
 
   Category({
     this.id,
@@ -11,6 +14,8 @@ class Category {
     required this.color,
     required this.isDefault,
     required this.singersCount,
+    this.activeCount = 0,
+    this.inactiveCount = 0,
   });
 
   Category copyWith({
@@ -19,6 +24,8 @@ class Category {
     int? color,
     bool? isDefault,
     int? singersCount,
+    int? activeCount,
+    int? inactiveCount,
   }) {
     return Category(
       id: id ?? this.id,
@@ -26,6 +33,8 @@ class Category {
       color: color ?? this.color,
       isDefault: isDefault ?? this.isDefault,
       singersCount: singersCount ?? this.singersCount,
+      activeCount: activeCount ?? this.activeCount,
+      inactiveCount: inactiveCount ?? this.inactiveCount,
     );
   }
 
@@ -36,6 +45,8 @@ class Category {
       color: map['color'],
       isDefault: map['isDefault'] == 1,
       singersCount: map['singersCount'] as int,
+      activeCount: 0,
+      inactiveCount: 0,
     );
   }
 
@@ -47,7 +58,7 @@ class Category {
       'singersCount': singersCount,
     };
 
-    final v = id; // LOCAL VARIABLE REQUIRED BY DART
+    final v = id;
     if (v != null) {
       map['id'] = v;
     }
