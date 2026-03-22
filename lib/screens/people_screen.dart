@@ -3,9 +3,9 @@ import '../data/database.dart';
 import '../models/person.dart';
 import '../models/category.dart';
 import '../widgets/add_edit_person_sheet.dart';
-import '../widgets/category_chip_filter.dart';
+import '../widgets/people_category_chip_filter.dart';
 import '../widgets/person_item.dart';
-import 'category_manager_screen.dart';
+import 'people_category_screen.dart';
 import '../utils/slovak_sort.dart';
 
 // SORT MODES

@@ -4,7 +4,7 @@ import '../models/song.dart';
 import '../models/song_category.dart';
 import '../widgets/song_category_chip_filter.dart';
 import '../widgets/add_edit_song_sheet.dart';
-import '../screens/song_category_manager_screen.dart';
+import 'song_category_screen.dart';
 
 // 🔥 nové jednotné triedenie
 import '../utils/slovak_sort.dart';
