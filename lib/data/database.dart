@@ -23,8 +23,10 @@ class AppDatabase {
 
   Future<Database> _initDb() async {
     // Zistenie runtime cesty pre databázu
-    final databasesPath = await getDatabasesPath();
-    final path = join(databasesPath, 'emeram.db');
+    final dbDir = join(Directory.current.path, 'dev_data');
+    await Directory(dbDir).create(recursive: true);
+
+    final path = join(dbDir, 'emeram.db');
 
     // Skontroluj, či runtime databáza existuje
     final exists = await databaseExists(path);
@@ -32,24 +34,18 @@ class AppDatabase {
     // Ak neexistuje → skopíruj ju z assets
     if (!exists) {
       try {
-        // Načítaj databázu z assets
         final data = await rootBundle.load('assets/db/emeram.db');
         final bytes = data.buffer.asUint8List(
           data.offsetInBytes,
           data.lengthInBytes,
         );
 
-        // Vytvor priečinok, ak treba
-        await Directory(databasesPath).create(recursive: true);
-
-        // Zapíš DB na runtime cestu
         await File(path).writeAsBytes(bytes, flush: true);
       } catch (_) {
         // nechávame ticho, bez logu
       }
     }
 
-    // Otvor databázu
     return await openDatabase(
       path,
       version: 1,
