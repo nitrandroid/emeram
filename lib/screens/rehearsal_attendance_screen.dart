@@ -6,8 +6,13 @@ import '../models/category.dart';
 
 class RehearsalAttendanceScreen extends StatefulWidget {
   final Rehearsal rehearsal;
+  final AppDatabase db;
 
-  const RehearsalAttendanceScreen({super.key, required this.rehearsal});
+  const RehearsalAttendanceScreen({
+    super.key,
+    required this.rehearsal,
+    required this.db,
+  });
 
   @override
   State<RehearsalAttendanceScreen> createState() =>
@@ -33,7 +38,7 @@ class _RehearsalAttendanceScreenState extends State<RehearsalAttendanceScreen> {
           originalPresent.containsAll(present));
 
   Future<void> _load() async {
-    final db = AppDatabase.instance;
+    final db = widget.db;
 
     // 1️⃣ fetch all people + categories
     final allPeople = await db.fetchPersons();
@@ -79,7 +84,7 @@ class _RehearsalAttendanceScreenState extends State<RehearsalAttendanceScreen> {
   }
 
   Future<void> _save() async {
-    final db = AppDatabase.instance;
+    final db = widget.db;
 
     await db.replaceRehearsalAttendance(widget.rehearsal.id!, present);
 

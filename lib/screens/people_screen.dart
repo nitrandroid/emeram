@@ -51,7 +51,7 @@ class _PeopleScreenState extends State<PeopleScreen> {
   }
 
   Future<void> _loadAll() async {
-    final AppDatabase db = widget.db ?? AppDatabase.instance;
+    final AppDatabase db = widget.db;
 
     try {
       final catsFuture = db.fetchCategories();
@@ -149,7 +149,7 @@ class _PeopleScreenState extends State<PeopleScreen> {
         return AddEditPersonSheet(
           categories: categories,
           onSubmit: (person) async {
-            final db = widget.db ?? AppDatabase.instance;
+            final db = widget.db;
             await db.addPerson(person);
             await _loadAll();
 
@@ -186,7 +186,7 @@ class _PeopleScreenState extends State<PeopleScreen> {
           categories: categories,
           existing: existing,
           onSubmit: (updated) async {
-            final db = widget.db ?? AppDatabase.instance;
+            final db = widget.db;
             await db.updatePerson(updated);
             await _loadAll();
           },
@@ -199,7 +199,7 @@ class _PeopleScreenState extends State<PeopleScreen> {
   // DELETE
   // ---------------------------------------------------------------
   Future<void> _deletePerson(Person p) async {
-    final db = widget.db ?? AppDatabase.instance;
+    final db = widget.db;
     await db.deletePerson(p.id!);
     await _loadAll();
   }
@@ -288,7 +288,7 @@ class _PeopleScreenState extends State<PeopleScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => const CategoryManagerScreen(),
+                  builder: (_) => CategoryManagerScreen(db: widget.db),
                 ),
               ).then((_) => _loadAll());
             },

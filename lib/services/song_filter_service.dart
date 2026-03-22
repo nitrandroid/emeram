@@ -1,6 +1,6 @@
 import '../models/song.dart';
 import '../utils/slovak_sort.dart';
-import '../screens/songs_screen.dart';
+import '../utils/song_sort.dart';
 
 class SongFilterService {
   static List<Song> apply({

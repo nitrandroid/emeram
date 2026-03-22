@@ -4,24 +4,12 @@ import '../models/song.dart';
 import '../models/song_category.dart';
 import '../widgets/song_category_chip_filter.dart';
 import 'song_category_screen.dart';
-import '../data/songs_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/songs_provider.dart';
 import '../utils/slovak_sort.dart';
-
-// ===========================================================
-// SORT MODES
-// ===========================================================
-enum SongSortMode {
-  title,
-  author,
-  arranger,
-  language,
-  firstRehearsal,
-  createdAt,
-}
-
-enum SortDirection { ascending, descending }
+import '../data/database.dart';
+import '../utils/song_sort.dart';
+import '../widgets/add_edit_song_sheet.dart';
 
 // ===========================================================
 // COMPARATORS
@@ -34,10 +22,10 @@ int compareArranger(Song a, Song b) =>
 int compareLanguage(Song a, Song b) =>
     slovakCompare(a.language ?? "", b.language ?? "");
 int compareFirstRehearsal(Song a, Song b) =>
-    (a.firstRehearsalDate ?? DateTime(1900))
-        .compareTo(b.firstRehearsalDate ?? DateTime(1900));
-int compareCreatedAt(Song a, Song b) =>
-    a.createdAt.compareTo(b.createdAt);
+    (a.firstRehearsalDate ?? DateTime(1900)).compareTo(
+      b.firstRehearsalDate ?? DateTime(1900),
+    );
+int compareCreatedAt(Song a, Song b) => a.createdAt.compareTo(b.createdAt);
 
 // ===========================================================
 // SCREEN
@@ -50,10 +38,9 @@ class SongsScreen extends ConsumerStatefulWidget {
 }
 
 class _SongsScreenState extends ConsumerState<SongsScreen> {
-  late final SongsRepository repo;
-
   List<SongCategory> categories = [];
   Map<int, SongCategory> categoryMap = {};
+  Set<int> usedSongIds = {};
 
   int? selectedCategoryId;
   String? selectedAuthor;
@@ -68,7 +55,23 @@ class _SongsScreenState extends ConsumerState<SongsScreen> {
   @override
   void initState() {
     super.initState();
-    repo = SongsRepository();
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    final db = AppDatabase.instance;
+    final cats = await db.fetchSongCategories();
+
+    final usedRows = await (await db.database).query(
+      'rehearsal_songs',
+      columns: ['songId'],
+    );
+
+    setState(() {
+      categories = cats;
+      categoryMap = {for (var c in cats) c.id!: c};
+      usedSongIds = usedRows.map((r) => r['songId'] as int).toSet();
+    });
   }
 
   @override
@@ -124,7 +127,10 @@ class _SongsScreenState extends ConsumerState<SongsScreen> {
             itemBuilder: (ctx) => const [
               PopupMenuItem(value: SongSortMode.title, child: Text("Názov")),
               PopupMenuItem(value: SongSortMode.author, child: Text("Autor")),
-              PopupMenuItem(value: SongSortMode.arranger, child: Text("Aranžér")),
+              PopupMenuItem(
+                value: SongSortMode.arranger,
+                child: Text("Aranžér"),
+              ),
               PopupMenuItem(value: SongSortMode.language, child: Text("Jazyk")),
               PopupMenuItem(
                 value: SongSortMode.firstRehearsal,
@@ -142,7 +148,8 @@ class _SongsScreenState extends ConsumerState<SongsScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => const SongCategoryManagerScreen(),
+                  builder: (_) =>
+                      SongCategoryManagerScreen(db: AppDatabase.instance),
                 ),
               );
             },
@@ -250,7 +257,8 @@ class _SongsScreenState extends ConsumerState<SongsScreen> {
                         itemBuilder: (ctx, i) {
                           final s = filtered[i];
 
-                          final cat = categoryMap[s.categoryId] ??
+                          final cat =
+                              categoryMap[s.categoryId] ??
                               SongCategory(
                                 id: 0,
                                 name: "Nezaradené",
@@ -262,10 +270,111 @@ class _SongsScreenState extends ConsumerState<SongsScreen> {
                           return ListTile(
                             leading: CircleAvatar(
                               backgroundColor: Color(cat.color),
-                              child: const Icon(Icons.music_note,
-                                  color: Colors.white),
+                              child: const Icon(
+                                Icons.music_note,
+                                color: Colors.white,
+                              ),
                             ),
                             title: Text(s.title),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.edit),
+                                  onPressed: () {
+                                    showModalBottomSheet(
+                                      context: context,
+                                      isScrollControlled: true,
+                                      useSafeArea: true,
+                                      builder: (_) {
+                                        return AddEditSongSheet(
+                                          categories: categories,
+                                          existing: s,
+                                          onSubmit: (updated) async {
+                                            final db = AppDatabase.instance;
+                                            await db.updateSong(updated);
+                                            await _loadCategories();
+                                          },
+                                        );
+                                      },
+                                    );
+                                  },
+                                ),
+                                if (!usedSongIds.contains(s.id))
+                                  IconButton(
+                                    icon: const Icon(Icons.delete),
+                                    onPressed: () async {
+                                      final confirmed = await showDialog<bool>(
+                                        context: context,
+                                        builder: (_) => AlertDialog(
+                                          title: const Text("Zmazať skladbu"),
+                                          content: Text(
+                                            'Naozaj chceš zmazať skladbu "${s.title}"?',
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(context, false),
+                                              child: const Text("Zrušiť"),
+                                            ),
+                                            ElevatedButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(context, true),
+                                              child: const Text("Zmazať"),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+
+                                      if (confirmed == true) {
+                                        final db = AppDatabase.instance;
+
+                                        final used = await (await db.database)
+                                            .query(
+                                              'rehearsal_songs',
+                                              where: 'songId = ?',
+                                              whereArgs: [s.id],
+                                            );
+
+                                        if (used.isNotEmpty) {
+                                          if (!context.mounted) return;
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                "Skladbu nie je možné odstrániť — je použitá v skúške.",
+                                              ),
+                                            ),
+                                          );
+                                          return;
+                                        }
+
+                                        await db.deleteSong(s.id!);
+                                        await _loadCategories();
+                                      }
+                                    },
+                                  ),
+                              ],
+                            ),
+                            onTap: () {
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                useSafeArea: true,
+                                builder: (_) {
+                                  return AddEditSongSheet(
+                                    categories: categories,
+                                    existing: s,
+                                    onSubmit: (updated) async {
+                                      final db = AppDatabase.instance;
+                                      await db.updateSong(updated);
+                                      await _loadCategories();
+                                    },
+                                  );
+                                },
+                              );
+                            },
                           );
                         },
                       ),

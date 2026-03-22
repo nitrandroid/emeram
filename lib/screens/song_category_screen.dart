@@ -4,7 +4,9 @@ import '../models/song_category.dart';
 import '../utils/slovak_sort.dart';
 
 class SongCategoryManagerScreen extends StatefulWidget {
-  const SongCategoryManagerScreen({super.key});
+  final AppDatabase db;
+
+  const SongCategoryManagerScreen({super.key, required this.db});
 
   @override
   State<SongCategoryManagerScreen> createState() =>
@@ -22,7 +24,7 @@ class _SongCategoryManagerScreenState extends State<SongCategoryManagerScreen> {
   }
 
   Future<void> _loadCategories() async {
-    final db = AppDatabase.instance;
+    final db = widget.db;
     final cats = await db.fetchSongCategories();
 
     if (!mounted) return;
@@ -130,7 +132,7 @@ class _SongCategoryManagerScreenState extends State<SongCategoryManagerScreen> {
 
                         Navigator.pop(context);
 
-                        final db = AppDatabase.instance;
+                        final db = widget.db;
 
                         if (existing == null) {
                           await db.addSongCategory(
@@ -169,7 +171,7 @@ class _SongCategoryManagerScreenState extends State<SongCategoryManagerScreen> {
   // DELETE CATEGORY (only if songsCount == 0)
   // -------------------------------------------------------------
   Future<void> _deleteCategory(SongCategory c) async {
-    final db = AppDatabase.instance;
+    final db = widget.db;
 
     final ok = await db.deleteSongCategory(c.id!);
 

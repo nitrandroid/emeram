@@ -6,8 +6,14 @@ import '../models/song_category.dart';
 
 class RehearsalRepertoireScreen extends StatefulWidget {
   final Rehearsal rehearsal;
+  final AppDatabase db;
 
-  const RehearsalRepertoireScreen({super.key, required this.rehearsal});
+  const RehearsalRepertoireScreen({
+    super.key,
+
+    required this.rehearsal,
+    required this.db,
+  });
 
   @override
   State<RehearsalRepertoireScreen> createState() =>
@@ -33,7 +39,7 @@ class _RehearsalRepertoireScreenState extends State<RehearsalRepertoireScreen> {
   }
 
   Future<void> _load() async {
-    final db = AppDatabase.instance;
+    final db = widget.db;
 
     final allSongs = await db.fetchSongs();
     final allCats = await db.fetchSongCategories();
@@ -59,7 +65,7 @@ class _RehearsalRepertoireScreenState extends State<RehearsalRepertoireScreen> {
   }
 
   Future<void> _save() async {
-    final db = AppDatabase.instance;
+    final db = widget.db;
 
     await db.replaceRehearsalSongs(widget.rehearsal.id!, selected);
 

@@ -18,8 +18,14 @@ class SongCategoryChipFilter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (categories.isEmpty) {
+      return const SizedBox.shrink();
+    }
     // 🔥 Default kategória ako prvá
-    final def = categories.firstWhere((c) => c.isDefault == true);
+    final def = categories.firstWhere(
+      (c) => c.isDefault == true,
+      orElse: () => categories.first,
+    );
     final rest = categories.where((c) => c.isDefault == false).toList()
       ..sort((a, b) => slovakCompare(a.name, b.name));
 

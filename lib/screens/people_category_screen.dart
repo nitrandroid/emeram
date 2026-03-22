@@ -5,7 +5,9 @@ import '../utils/slovak_sort.dart';
 
 
 class CategoryManagerScreen extends StatefulWidget {
-  const CategoryManagerScreen({super.key});
+  final AppDatabase db;
+
+  const CategoryManagerScreen({super.key, required this.db});
 
   @override
   State<CategoryManagerScreen> createState() => _CategoryManagerScreenState();
@@ -22,7 +24,7 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen> {
   }
 
   Future<void> _loadCategories() async {
-    final db = AppDatabase.instance;
+    final db = widget.db;
     final cats = await db.fetchCategories();
 
     // načítame všetkých ľudí
@@ -144,7 +146,7 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen> {
                       onPressed: () async {
                         if (nameCtrl.text.trim().isEmpty) return;
 
-                        final db = AppDatabase.instance;
+                        final db = widget.db;
                         Navigator.pop(context);
 
                         if (existing == null) {
@@ -184,7 +186,7 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen> {
   // DELETE
   // -------------------------------------------------------------
   Future<void> _deleteCategory(Category c) async {
-    final db = AppDatabase.instance;
+    final db = widget.db;
 
     if (c.singersCount > 0) {
       ScaffoldMessenger.of(context).showSnackBar(

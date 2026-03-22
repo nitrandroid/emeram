@@ -7,7 +7,8 @@ import 'rehearsal_attendance_screen.dart';
 import 'rehearsal_repertoire_screen.dart';
 
 class RehearsalsScreen extends StatefulWidget {
-  const RehearsalsScreen({super.key});
+  final AppDatabase db;
+  const RehearsalsScreen({super.key, required this.db});
 
   @override
   State<RehearsalsScreen> createState() => _RehearsalsScreenState();
@@ -29,7 +30,7 @@ class _RehearsalsScreenState extends State<RehearsalsScreen> {
   }
 
   Future<void> _load() async {
-    final db = AppDatabase.instance;
+    final db = widget.db;
 
     final allRehearsals = await db.fetchRehearsals();
     final List<Person> allPeople = await db.fetchPersons();
@@ -138,7 +139,7 @@ class _RehearsalsScreenState extends State<RehearsalsScreen> {
             builder: (_) {
               return AddEditRehearsalSheet(
                 onSubmit: (r) async {
-                  final db = AppDatabase.instance;
+                  final db = widget.db;
                   await db.addRehearsal(r);
                   await _load();
                 },
@@ -189,7 +190,7 @@ class _RehearsalsScreenState extends State<RehearsalsScreen> {
                               return AddEditRehearsalSheet(
                                 existing: r,
                                 onSubmit: (updated) async {
-                                  final db = AppDatabase.instance;
+                                  final db = widget.db;
                                   await db.updateRehearsal(updated);
                                   await _load();
                                 },
@@ -228,7 +229,7 @@ class _RehearsalsScreenState extends State<RehearsalsScreen> {
                             );
 
                             if (confirm == true) {
-                              final db = AppDatabase.instance;
+                              final db = widget.db;
                               await db.deleteRehearsal(r.id!);
                               await _load();
                             }
@@ -243,8 +244,10 @@ class _RehearsalsScreenState extends State<RehearsalsScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) =>
-                                  RehearsalRepertoireScreen(rehearsal: r),
+                              builder: (_) => RehearsalRepertoireScreen(
+                                rehearsal: r,
+                                db: widget.db,
+                              ),
                             ),
                           );
                         },
@@ -258,8 +261,10 @@ class _RehearsalsScreenState extends State<RehearsalsScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) =>
-                                  RehearsalAttendanceScreen(rehearsal: r),
+                              builder: (_) => RehearsalAttendanceScreen(
+                                rehearsal: r,
+                                db: widget.db,
+                              ),
                             ),
                           ).then((_) => _load());
                         },
@@ -277,7 +282,7 @@ class _RehearsalsScreenState extends State<RehearsalsScreen> {
                         return AddEditRehearsalSheet(
                           existing: r,
                           onSubmit: (updated) async {
-                            final db = AppDatabase.instance;
+                            final db = widget.db;
                             await db.updateRehearsal(updated);
                             await _load();
                           },
