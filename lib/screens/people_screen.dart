@@ -29,11 +29,10 @@ class PeopleScreen extends ConsumerStatefulWidget {
 
 class _PeopleScreenState extends ConsumerState<PeopleScreen> {
   int? selectedCategoryId;
-
+  Set<int> usedPersonIds = {}; // osoby použité v attendance
   SortMode sortMode = SortMode.lastName;
   SortDirection sortDirection = SortDirection.ascending;
   ActivityFilter activityFilter = ActivityFilter.all;
-
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -161,6 +160,20 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
     final categoriesAsync = ref.read(categoriesProvider);
     final providerPersons = peopleAsync.value ?? [];
     final providerCategories = categoriesAsync.value ?? [];
+
+    if (usedPersonIds.isEmpty) {
+      ref.read(appDatabaseProvider).database.then((db) async {
+        final rows = await db.query(
+          'rehearsal_attendance',
+          columns: ['personId'],
+        );
+        if (mounted) {
+          setState(() {
+            usedPersonIds = rows.map((r) => r['personId'] as int).toSet();
+          });
+        }
+      });
+    }
 
     List<Person> filteredPersons = selectedCategoryId == null
         ? [...providerPersons]
@@ -396,7 +409,9 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
                                 person: person,
                                 category: category,
                                 onEdit: () => _openEditPerson(person),
-                                onDelete: () => confirmAndDelete(person),
+                                onDelete: usedPersonIds.contains(person.id)
+                                    ? null
+                                    : () => confirmAndDelete(person),
                               );
                             },
                           ),

@@ -236,7 +236,7 @@ class _SongCategoryManagerScreenState extends State<SongCategoryManagerScreen> {
                           onPressed: () => _openCategorySheet(existing: c),
                         ),
 
-                      if (!c.isDefault)
+                      if (!c.isDefault && c.songsCount == 0)
                         IconButton(
                           tooltip: "Zmazať",
                           icon: const Icon(Icons.delete),

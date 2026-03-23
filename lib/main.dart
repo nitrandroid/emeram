@@ -21,8 +21,8 @@ Future<void> main() async {
 
   // Android + iOS používajú normálny sqflite → nič netreba inicializovať
 
-  // 🔥 preload databázy
-  await AppDatabase.instance.database;
+  // 🔥 neblokujúci preload databázy
+  AppDatabase.instance.database;
 
   runApp(const ProviderScope(child: ResponsiveRoot(child: EmeramApp())));
 }

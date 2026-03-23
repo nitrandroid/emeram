@@ -9,7 +9,7 @@ class PersonItem extends StatelessWidget {
   final Person person;
   final Category category;
   final VoidCallback onEdit;
-  final VoidCallback onDelete;
+  final VoidCallback? onDelete;
 
   static final DateFormat _dateFormat = DateFormat.yMd('sk_SK');
 
@@ -139,11 +139,12 @@ class PersonItem extends StatelessWidget {
                 onPressed: onEdit,
               ),
 
-              IconButton(
-                icon: const Icon(Icons.delete),
-                tooltip: 'Zmazať',
-                onPressed: onDelete,
-              ),
+              if (onDelete != null)
+                IconButton(
+                  icon: const Icon(Icons.delete),
+                  tooltip: 'Zmazať',
+                  onPressed: onDelete,
+                ),
 
               // Kompaktný režim → menej používané akcie v menu
               if (isCompact &&
