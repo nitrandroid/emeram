@@ -22,11 +22,17 @@ class AppDatabase {
   }
 
   Future<Database> _initDb() async {
-    // Zistenie runtime cesty pre databázu
-    final dbDir = join(Directory.current.path, 'dev_data');
-    await Directory(dbDir).create(recursive: true);
+    // ✅ multiplatform správna cesta
+    late String path;
 
-    final path = join(dbDir, 'emeram.db');
+    if (Platform.isAndroid || Platform.isIOS) {
+      final dbDir = await getDatabasesPath();
+      path = join(dbDir, 'emeram.db');
+    } else {
+      final dbDir = join(Directory.current.path, 'dev_data');
+      await Directory(dbDir).create(recursive: true);
+      path = join(dbDir, 'emeram.db');
+    }
 
     // Skontroluj, či runtime databáza existuje
     final exists = await databaseExists(path);
@@ -41,9 +47,7 @@ class AppDatabase {
         );
 
         await File(path).writeAsBytes(bytes, flush: true);
-      } catch (_) {
-        // nechávame ticho, bez logu
-      }
+      } catch (_) {}
     }
 
     return await openDatabase(

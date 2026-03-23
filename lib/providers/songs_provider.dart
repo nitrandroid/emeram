@@ -4,5 +4,6 @@ import '../models/song.dart';
 
 final songsProvider = FutureProvider<List<Song>>((ref) async {
   final repo = SongsRepository();
+  ref.keepAlive();
   return repo.fetchSongs();
 });

@@ -34,12 +34,21 @@ class _RehearsalsScreenState extends ConsumerState<RehearsalsScreen> {
 
     final allRehearsals = await db.fetchRehearsals();
     final List<Person> allPeople = await db.fetchPersons();
+    final attendanceRows = await (await db.database).query(
+      'rehearsal_attendance',
+    );
 
     final Map<int, int> presCounts = {};
     final Map<int, int> actCounts = {};
+    final Map<int, Set<int>> attendanceMap = {};
+    for (final row in attendanceRows) {
+      final rid = row['rehearsalId'] as int;
+      final pid = row['personId'] as int;
+      attendanceMap.putIfAbsent(rid, () => {}).add(pid);
+    }
 
     for (final r in allRehearsals) {
-      final presentIds = await db.fetchRehearsalAttendancePersonIds(r.id!);
+      final presentIds = attendanceMap[r.id!] ?? {};
       presCounts[r.id!] = presentIds.length;
 
       final d = r.date;

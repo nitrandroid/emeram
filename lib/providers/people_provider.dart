@@ -4,5 +4,6 @@ import 'database_provider.dart';
 
 final peopleProvider = FutureProvider<List<Person>>((ref) async {
   final db = ref.watch(appDatabaseProvider);
+  ref.keepAlive();
   return db.fetchPersons();
 });
