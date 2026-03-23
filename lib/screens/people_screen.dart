@@ -158,7 +158,7 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
   @override
   Widget build(BuildContext context) {
     final peopleAsync = ref.watch(peopleProvider);
-    final categoriesAsync = ref.watch(categoriesProvider);
+    final categoriesAsync = ref.read(categoriesProvider);
     final providerPersons = peopleAsync.value ?? [];
     final providerCategories = categoriesAsync.value ?? [];
 
@@ -190,10 +190,11 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
         break;
     }
 
-    filteredPersons.sort((a, b) {
-      final result = chainCompare(chain, a, b);
-      return sortDirection == SortDirection.descending ? -result : result;
-    });
+    final sortedPersons = [...filteredPersons]
+      ..sort((a, b) {
+        final result = chainCompare(chain, a, b);
+        return sortDirection == SortDirection.descending ? -result : result;
+      });
     return Scaffold(
       appBar: AppBar(
         title: const Text("Členovia zboru"),
@@ -260,95 +261,149 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
         child: const Icon(Icons.person_add),
       ),
 
-      body: peopleAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text("Chyba: $e")),
-        data: (_) => Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      body: (peopleAsync.isLoading || categoriesAsync.isLoading)
+          ? const Center(
               child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 12),
+                  Text("Načítavam údaje..."),
+                ],
+              ),
+            )
+          : peopleAsync.when(
+              loading: () => const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 12),
+                    Text("Načítavam údaje..."),
+                  ],
+                ),
+              ),
+              error: (e, _) => Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      size: 48,
+                      color: Colors.red,
+                    ),
+                    const SizedBox(height: 12),
+                    const Text("Nepodarilo sa načítať údaje"),
+                    const SizedBox(height: 6),
+                    Text("$e", textAlign: TextAlign.center),
+                  ],
+                ),
+              ),
+              data: (_) => Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  CategoryChipFilter(
-                    categories: providerCategories,
-                    selectedId: selectedCategoryId,
-                    onSelected: (id) {
-                      setState(() => selectedCategoryId = id);
-                    },
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CategoryChipFilter(
+                          categories: providerCategories,
+                          selectedId: selectedCategoryId,
+                          onSelected: (id) {
+                            setState(() => selectedCategoryId = id);
+                          },
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        Wrap(
+                          spacing: 8,
+                          children: [
+                            ChoiceChip(
+                              label: const Text("Všetci"),
+                              selected: activityFilter == ActivityFilter.all,
+                              onSelected: (_) {
+                                setState(
+                                  () => activityFilter = ActivityFilter.all,
+                                );
+                              },
+                            ),
+                            ChoiceChip(
+                              label: const Text("Aktívni"),
+                              selected: activityFilter == ActivityFilter.active,
+                              onSelected: (_) {
+                                setState(
+                                  () => activityFilter = ActivityFilter.active,
+                                );
+                              },
+                            ),
+                            ChoiceChip(
+                              label: const Text("Neaktívni"),
+                              selected:
+                                  activityFilter == ActivityFilter.inactive,
+                              onSelected: (_) {
+                                setState(
+                                  () =>
+                                      activityFilter = ActivityFilter.inactive,
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
 
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
 
-                  Wrap(
-                    spacing: 8,
-                    children: [
-                      ChoiceChip(
-                        label: const Text("Všetci"),
-                        selected: activityFilter == ActivityFilter.all,
-                        onSelected: (_) {
-                          setState(() => activityFilter = ActivityFilter.all);
-                        },
-                      ),
-                      ChoiceChip(
-                        label: const Text("Aktívni"),
-                        selected: activityFilter == ActivityFilter.active,
-                        onSelected: (_) {
-                          setState(
-                            () => activityFilter = ActivityFilter.active,
-                          );
-                        },
-                      ),
-                      ChoiceChip(
-                        label: const Text("Neaktívni"),
-                        selected: activityFilter == ActivityFilter.inactive,
-                        onSelected: (_) {
-                          setState(
-                            () => activityFilter = ActivityFilter.inactive,
-                          );
-                        },
-                      ),
-                    ],
+                  Expanded(
+                    child: sortedPersons.isEmpty
+                        ? const Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.people_outline,
+                                  size: 48,
+                                  color: Colors.grey,
+                                ),
+                                SizedBox(height: 12),
+                                Text("Žiadni členovia"),
+                                SizedBox(height: 6),
+                                Text("Pridaj prvého člena pomocou tlačidla +"),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            controller: _scrollController,
+                            itemCount: sortedPersons.length,
+                            itemBuilder: (ctx, i) {
+                              final person = sortedPersons[i];
+
+                              final category = providerCategories.firstWhere(
+                                (c) => c.id == person.categoryId,
+                                orElse: () => Category(
+                                  id: 0,
+                                  name: "Nezaradený",
+                                  color: Colors.grey.toARGB32(),
+                                  isDefault: false,
+                                  singersCount: 0,
+                                ),
+                              );
+
+                              return PersonItem(
+                                person: person,
+                                category: category,
+                                onEdit: () => _openEditPerson(person),
+                                onDelete: () => confirmAndDelete(person),
+                              );
+                            },
+                          ),
                   ),
                 ],
               ),
             ),
-
-            const SizedBox(height: 8),
-
-            Expanded(
-              child: filteredPersons.isEmpty
-                  ? const Center(child: Text("Žiadni členovia"))
-                  : ListView.builder(
-                      controller: _scrollController,
-                      itemCount: filteredPersons.length,
-                      itemBuilder: (ctx, i) {
-                        final person = filteredPersons[i];
-
-                        final category = providerCategories.firstWhere(
-                          (c) => c.id == person.categoryId,
-                          orElse: () => Category(
-                            id: 0,
-                            name: "Nezaradený",
-                            color: Colors.grey.toARGB32(),
-                            isDefault: false,
-                            singersCount: 0,
-                          ),
-                        );
-
-                        return PersonItem(
-                          person: person,
-                          category: category,
-                          onEdit: () => _openEditPerson(person),
-                          onDelete: () => confirmAndDelete(person),
-                        );
-                      },
-                    ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

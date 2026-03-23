@@ -214,7 +214,16 @@ class _CategoryManagerScreenState extends ConsumerState<CategoryManagerScreen> {
       ),
 
       body: loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 12),
+                  Text("Načítavam kategórie..."),
+                ],
+              ),
+            )
           : categories.isEmpty
           ? const Center(child: Text("Žiadne kategórie"))
           : ListView.builder(

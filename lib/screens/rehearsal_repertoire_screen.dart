@@ -124,7 +124,16 @@ class _RehearsalRepertoireScreenState
       ),
 
       body: loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 12),
+                  Text("Načítavam repertoár..."),
+                ],
+              ),
+            )
           : songs.isEmpty
           ? _buildEmpty()
           : _buildList(context),

@@ -159,7 +159,16 @@ class _RehearsalsScreenState extends ConsumerState<RehearsalsScreen> {
       ),
 
       body: loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 12),
+                  Text("Načítavam skúšky..."),
+                ],
+              ),
+            )
           : rehearsals.isEmpty
           ? const Center(child: Text("Žiadne skúšky"))
           : ListView.builder(

@@ -8,10 +8,7 @@ import '../providers/database_provider.dart';
 class RehearsalAttendanceScreen extends ConsumerStatefulWidget {
   final Rehearsal rehearsal;
 
-  const RehearsalAttendanceScreen({
-    super.key,
-    required this.rehearsal,
-  });
+  const RehearsalAttendanceScreen({super.key, required this.rehearsal});
 
   @override
   ConsumerState<RehearsalAttendanceScreen> createState() =>
@@ -152,7 +149,16 @@ class _RehearsalAttendanceScreenState
       ),
 
       body: loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 12),
+                  Text("Načítavam dochádzku..."),
+                ],
+              ),
+            )
           : _buildGroupedList(context),
     );
   }

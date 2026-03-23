@@ -8,8 +8,9 @@ import 'screens/home_screen.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'widgets/responsive_root.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'data/database.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Desktop režim (Linux / Windows / macOS)
@@ -19,6 +20,9 @@ void main() {
   }
 
   // Android + iOS používajú normálny sqflite → nič netreba inicializovať
+
+  // 🔥 preload databázy
+  await AppDatabase.instance.database;
 
   runApp(const ProviderScope(child: ResponsiveRoot(child: EmeramApp())));
 }
