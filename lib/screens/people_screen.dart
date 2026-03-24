@@ -10,6 +10,7 @@ import '../widgets/people_category_chip_filter.dart';
 import '../widgets/person_item.dart';
 import 'people_category_screen.dart';
 import '../utils/slovak_sort.dart';
+import '../providers/people_actions_provider.dart';
 
 // SORT MODES
 enum SortMode { lastName, fromDate, toDate }
@@ -70,9 +71,8 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
         return AddEditPersonSheet(
           categories: ref.read(categoriesProvider).value ?? [],
           onSubmit: (person) async {
-            final db = ref.read(appDatabaseProvider);
-            await db.addPerson(person);
-            ref.invalidate(peopleProvider);
+            final actions = ref.read(peopleActionsProvider);
+            await actions.add(person);
 
             setState(() {
               sortMode = SortMode.lastName;
@@ -107,9 +107,8 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
           categories: ref.read(categoriesProvider).value ?? [],
           existing: existing,
           onSubmit: (updated) async {
-            final db = ref.read(appDatabaseProvider);
-            await db.updatePerson(updated);
-            ref.invalidate(peopleProvider);
+            final actions = ref.read(peopleActionsProvider);
+            await actions.update(updated);
           },
         );
       },
@@ -120,9 +119,8 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> {
   // DELETE
   // ---------------------------------------------------------------
   Future<void> _deletePerson(Person p) async {
-    final db = ref.read(appDatabaseProvider);
-    await db.deletePerson(p.id!);
-    ref.invalidate(peopleProvider);
+    final actions = ref.read(peopleActionsProvider);
+    await actions.delete(p.id!);
   }
 
   Future<void> confirmAndDelete(Person p) async {

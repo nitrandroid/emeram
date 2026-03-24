@@ -10,6 +10,7 @@ import '../utils/slovak_sort.dart';
 import '../data/database.dart';
 import '../utils/song_sort.dart';
 import '../widgets/add_edit_song_sheet.dart';
+import '../providers/songs_actions_provider.dart';
 
 // ===========================================================
 // COMPARATORS
@@ -276,6 +277,20 @@ class _SongsScreenState extends ConsumerState<SongsScreen> {
                               ),
                             ),
                             title: Text(s.title),
+                            subtitle:
+                                (s.author?.trim().isNotEmpty ?? false) ||
+                                    (s.arranger?.trim().isNotEmpty ?? false)
+                                ? Text(
+                                    [
+                                      if (s.author?.trim().isNotEmpty ?? false)
+                                        s.author,
+                                      if (s.arranger?.trim().isNotEmpty ??
+                                          false)
+                                        "arr. ${s.arranger}",
+                                    ].join("; "),
+                                    style: const TextStyle(fontSize: 12),
+                                  )
+                                : null,
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -291,8 +306,10 @@ class _SongsScreenState extends ConsumerState<SongsScreen> {
                                           categories: categories,
                                           existing: s,
                                           onSubmit: (updated) async {
-                                            final db = AppDatabase.instance;
-                                            await db.updateSong(updated);
+                                            final actions = ref.read(
+                                              songsActionsProvider,
+                                            );
+                                            await actions.update(updated);
                                             await _loadCategories();
                                           },
                                         );
@@ -350,7 +367,10 @@ class _SongsScreenState extends ConsumerState<SongsScreen> {
                                           return;
                                         }
 
-                                        await db.deleteSong(s.id!);
+                                        final actions = ref.read(
+                                          songsActionsProvider,
+                                        );
+                                        await actions.delete(s.id!);
                                         await _loadCategories();
                                       }
                                     },
@@ -367,8 +387,10 @@ class _SongsScreenState extends ConsumerState<SongsScreen> {
                                     categories: categories,
                                     existing: s,
                                     onSubmit: (updated) async {
-                                      final db = AppDatabase.instance;
-                                      await db.updateSong(updated);
+                                      final actions = ref.read(
+                                        songsActionsProvider,
+                                      );
+                                      await actions.update(updated);
                                       await _loadCategories();
                                     },
                                   );

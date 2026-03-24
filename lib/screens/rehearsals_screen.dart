@@ -6,6 +6,7 @@ import '../models/person.dart';
 import '../widgets/add_edit_rehearsal_sheet.dart';
 import 'rehearsal_attendance_screen.dart';
 import 'rehearsal_repertoire_screen.dart';
+import '../providers/rehearsals_actions_provider.dart';
 
 class RehearsalsScreen extends ConsumerStatefulWidget {
   const RehearsalsScreen({super.key});
@@ -148,8 +149,8 @@ class _RehearsalsScreenState extends ConsumerState<RehearsalsScreen> {
             builder: (_) {
               return AddEditRehearsalSheet(
                 onSubmit: (r) async {
-                  final db = ref.read(appDatabaseProvider);
-                  await db.addRehearsal(r);
+                  final actions = ref.read(rehearsalsActionsProvider);
+                  await actions.add(r);
                   await _load();
                 },
               );
@@ -208,8 +209,10 @@ class _RehearsalsScreenState extends ConsumerState<RehearsalsScreen> {
                               return AddEditRehearsalSheet(
                                 existing: r,
                                 onSubmit: (updated) async {
-                                  final db = ref.read(appDatabaseProvider);
-                                  await db.updateRehearsal(updated);
+                                  final actions = ref.read(
+                                    rehearsalsActionsProvider,
+                                  );
+                                  await actions.update(updated);
                                   await _load();
                                 },
                               );
@@ -247,8 +250,10 @@ class _RehearsalsScreenState extends ConsumerState<RehearsalsScreen> {
                             );
 
                             if (confirm == true) {
-                              final db = ref.read(appDatabaseProvider);
-                              await db.deleteRehearsal(r.id!);
+                              final actions = ref.read(
+                                rehearsalsActionsProvider,
+                              );
+                              await actions.delete(r.id!);
                               await _load();
                             }
                           },
@@ -296,8 +301,8 @@ class _RehearsalsScreenState extends ConsumerState<RehearsalsScreen> {
                         return AddEditRehearsalSheet(
                           existing: r,
                           onSubmit: (updated) async {
-                            final db = ref.read(appDatabaseProvider);
-                            await db.updateRehearsal(updated);
+                            final actions = ref.read(rehearsalsActionsProvider);
+                            await actions.update(updated);
                             await _load();
                           },
                         );
