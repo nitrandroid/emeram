@@ -124,23 +124,54 @@ class _GigRepertoireScreenState extends ConsumerState<GigRepertoireScreen> {
           ),
         ],
       ),
-      body: loading
-          ? const Center(child: CircularProgressIndicator())
-          : songs.isEmpty
-          ? const Center(child: Text("Žiadna skladba"))
-          : ListView.builder(
-              itemCount: songs.length,
-              itemBuilder: (ctx, i) {
-                final s = songs[i];
 
-                return CheckboxListTile(
-                  title: Text(s.title),
-                  subtitle: s.author != null ? Text(s.author!) : null,
-                  value: selected.contains(s.id),
-                  onChanged: (v) => _toggle(s, v ?? false),
-                );
-              },
-            ),
+      body: loading
+          ? const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 12),
+                  Text("Načítavam repertoár..."),
+                ],
+              ),
+            )
+          : songs.isEmpty
+          ? _buildEmpty()
+          : _buildList(context),
+    );
+  }
+
+  // 🔥 Presne rovnaký vizuál ako na obrazovke skladieb
+  Widget _buildEmpty() {
+    return const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.music_note, size: 64, color: Colors.grey),
+          SizedBox(height: 16),
+          Text(
+            "Žiadna skladba",
+            style: TextStyle(fontSize: 18, color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildList(BuildContext context) {
+    return ListView.builder(
+      itemCount: songs.length,
+      itemBuilder: (ctx, i) {
+        final s = songs[i];
+
+        return CheckboxListTile(
+          title: Text(s.title),
+          subtitle: s.author != null ? Text(s.author!) : null,
+          value: selected.contains(s.id),
+          onChanged: (v) => _toggle(s, v ?? false),
+        );
+      },
     );
   }
 }

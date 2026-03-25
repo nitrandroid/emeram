@@ -37,9 +37,11 @@ class _GigAttendanceScreenState extends ConsumerState<GigAttendanceScreen> {
   Future<void> _load() async {
     final db = ref.read(appDatabaseProvider);
 
+    // 1️⃣ fetch all people + categories
     final allPeople = await db.fetchPersons();
     final allCats = await db.fetchCategories();
 
+    // 2️⃣ filter active in date of gig
     final d = widget.gig.date;
 
     final active = allPeople.where((p) {
@@ -54,6 +56,7 @@ class _GigAttendanceScreenState extends ConsumerState<GigAttendanceScreen> {
       return fromOk && toOk;
     }).toList();
 
+    // 3️⃣ fetch attendance
     final presentIds = await db.fetchGigAttendancePersonIds(widget.gig.id!);
 
     if (!mounted) return;
@@ -101,6 +104,7 @@ class _GigAttendanceScreenState extends ConsumerState<GigAttendanceScreen> {
       return;
     }
 
+    // 🔥 4️⃣ potvrdenie pred uložením
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -130,7 +134,11 @@ class _GigAttendanceScreenState extends ConsumerState<GigAttendanceScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("Účasť – ${g.date.day}.${g.date.month}.${g.date.year}"),
+        title: Text(
+          "Účasť – ${g.date.day.toString().padLeft(2, '0')}."
+          "${g.date.month.toString().padLeft(2, '0')}."
+          "${g.date.year}",
+        ),
         actions: [
           TextButton(
             onPressed: _handleSaveOrClose,
@@ -141,13 +149,25 @@ class _GigAttendanceScreenState extends ConsumerState<GigAttendanceScreen> {
           ),
         ],
       ),
+
       body: loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 12),
+                  Text("Načítavam dochádzku..."),
+                ],
+              ),
+            )
           : _buildGroupedList(context),
     );
   }
 
+  // 🔥 3️⃣ Oddelenie podľa hlasových skupín
   Widget _buildGroupedList(BuildContext context) {
+    // zoradenie kategórií podľa isDefault a potom názvu
     final sortedCats = [
       ...categories.where((c) => c.isDefault),
       ...categories.where((c) => !c.isDefault),
@@ -160,13 +180,15 @@ class _GigAttendanceScreenState extends ConsumerState<GigAttendanceScreen> {
 
       if (groupPeople.isEmpty) continue;
 
+      // názov hlasovej skupiny
       widgets.add(
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Text(cat.name),
+          child: Text(cat.name, style: Theme.of(context).textTheme.titleMedium),
         ),
       );
 
+      // členovia v skupine
       for (final p in groupPeople) {
         widgets.add(
           CheckboxListTile(

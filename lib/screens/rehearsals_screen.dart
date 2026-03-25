@@ -1,12 +1,13 @@
+// lib/screens/rehearsals_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/database_provider.dart';
 import '../models/rehearsal.dart';
 import '../models/person.dart';
 import '../widgets/add_edit_rehearsal_sheet.dart';
+import '../providers/rehearsals_actions_provider.dart';
 import 'rehearsal_attendance_screen.dart';
 import 'rehearsal_repertoire_screen.dart';
-import '../providers/rehearsals_actions_provider.dart';
 
 class RehearsalsScreen extends ConsumerStatefulWidget {
   const RehearsalsScreen({super.key});
@@ -35,13 +36,13 @@ class _RehearsalsScreenState extends ConsumerState<RehearsalsScreen> {
 
     final allRehearsals = await db.fetchRehearsals();
     final List<Person> allPeople = await db.fetchPersons();
-    final attendanceRows = await (await db.database).query(
-      'rehearsal_attendance',
-    );
+
+    final attendanceRows = await (await db.database).query('rehearsal_attendance',);
 
     final Map<int, int> presCounts = {};
     final Map<int, int> actCounts = {};
     final Map<int, Set<int>> attendanceMap = {};
+
     for (final row in attendanceRows) {
       final rid = row['rehearsalId'] as int;
       final pid = row['personId'] as int;
@@ -53,6 +54,7 @@ class _RehearsalsScreenState extends ConsumerState<RehearsalsScreen> {
       presCounts[r.id!] = presentIds.length;
 
       final d = r.date;
+
       final active = allPeople.where((p) {
         final fromOk =
             p.fromDate == null ||
@@ -103,8 +105,7 @@ class _RehearsalsScreenState extends ConsumerState<RehearsalsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Skúšky"),
+      appBar: AppBar(title: const Text("Skúšky"),
         actions: [
           // 🔁 TRIEDENIE ASC / DESC
           IconButton(

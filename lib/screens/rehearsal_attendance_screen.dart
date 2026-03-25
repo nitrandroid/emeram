@@ -1,3 +1,4 @@
+// lib/screens/rehearsal_attendance_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/rehearsal.dart';
@@ -15,8 +16,7 @@ class RehearsalAttendanceScreen extends ConsumerStatefulWidget {
       _RehearsalAttendanceScreenState();
 }
 
-class _RehearsalAttendanceScreenState
-    extends ConsumerState<RehearsalAttendanceScreen> {
+class _RehearsalAttendanceScreenState extends ConsumerState<RehearsalAttendanceScreen> {
   List<Person> people = [];
   List<Category> categories = [];
   Set<int> present = {};
@@ -57,9 +57,9 @@ class _RehearsalAttendanceScreenState
     }).toList();
 
     // 3️⃣ fetch attendance
-    final presentIds = await db.fetchRehearsalAttendancePersonIds(
-      widget.rehearsal.id!,
-    );
+    final presentIds = await db.fetchRehearsalAttendancePersonIds(widget.rehearsal.id!,);
+
+    if (!mounted) return;
 
     setState(() {
       people = active;
@@ -84,6 +84,8 @@ class _RehearsalAttendanceScreenState
     final db = ref.read(appDatabaseProvider);
 
     await db.replaceRehearsalAttendance(widget.rehearsal.id!, present);
+
+    if (!mounted) return;
 
     setState(() {
       originalPresent = {...present};

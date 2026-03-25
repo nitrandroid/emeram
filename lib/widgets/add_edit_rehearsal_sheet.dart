@@ -1,3 +1,4 @@
+// lib/widgets/add_edit_rehearsal_sheet.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/rehearsal.dart';
@@ -6,11 +7,7 @@ class AddEditRehearsalSheet extends StatefulWidget {
   final Rehearsal? existing;
   final ValueChanged<Rehearsal> onSubmit;
 
-  const AddEditRehearsalSheet({
-    super.key,
-    required this.onSubmit,
-    this.existing,
-  });
+  const AddEditRehearsalSheet({super.key, required this.onSubmit, this.existing});
 
   @override
   State<AddEditRehearsalSheet> createState() => _AddEditRehearsalSheetState();

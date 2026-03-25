@@ -18,9 +18,12 @@ class GigsScreen extends ConsumerStatefulWidget {
 
 class _GigsScreenState extends ConsumerState<GigsScreen> {
   List<Gig> gigs = [];
-  Map<int, int> presentCount = {};
-  Map<int, int> activeCount = {};
+  Map<int, int> presentCount = {}; // gigId → prítomní
+  Map<int, int> activeCount = {}; // gigId → aktívni
   bool loading = true;
+
+  bool sortAscending = false; // 🔥 DEFAULT = NAJNOVŠIE HORE
+  int? filterYear; // null = všetky roky
 
   @override
   void initState() {
@@ -34,20 +37,17 @@ class _GigsScreenState extends ConsumerState<GigsScreen> {
     final allGigs = await db.fetchGigs();
     final List<Person> allPeople = await db.fetchPersons();
 
-    final attendanceRows =
-        await (await db.database).query('gig_attendance');
+    final attendanceRows = await (await db.database).query('gig_attendance');
 
     final Map<int, int> presCounts = {};
+    final Map<int, int> actCounts = {};
     final Map<int, Set<int>> attendanceMap = {};
 
     for (final row in attendanceRows) {
       final gid = row['gigId'] as int;
       final pid = row['personId'] as int;
-
       attendanceMap.putIfAbsent(gid, () => {}).add(pid);
     }
-
-    final Map<int, int> actCounts = {};
 
     for (final g in allGigs) {
       final presentIds = attendanceMap[g.id!] ?? {};
@@ -78,19 +78,75 @@ class _GigsScreenState extends ConsumerState<GigsScreen> {
       activeCount = actCounts;
       loading = false;
     });
+
+    _applySortingAndFiltering(); // 💡 uplatní default DESC triedenie
+  }
+
+  // 🔧 TRIEDENIE + FILTER
+  void _applySortingAndFiltering() {
+    List<Gig> list = [...gigs];
+
+    // FILTER podľa roku
+    if (filterYear != null) {
+      list = list.where((g) => g.date.year == filterYear).toList();
+    }
+
+    // TRIEDENIE
+    list.sort(
+      (a, b) =>
+          sortAscending ? a.date.compareTo(b.date) : b.date.compareTo(a.date),
+    );
+
+    setState(() {
+      gigs = list;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Vystúpenia")),
+      appBar: AppBar(title: const Text("Vystúpenia"),
+        actions: [
+          // 🔁 TRIEDENIE ASC / DESC
+          IconButton(
+            icon: Icon(
+              sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+            ),
+            tooltip: sortAscending ? "Triediť zostupne" : "Triediť vzostupne",
+            onPressed: () {
+              setState(() => sortAscending = !sortAscending);
+              _applySortingAndFiltering();
+            },
+          ),
+
+          // 🔍 FILTER PODĽA ROKU
+          PopupMenuButton<int?>(
+            icon: const Icon(Icons.filter_alt),
+            tooltip: "Filter podľa roku",
+            onSelected: (value) {
+              setState(() => filterYear = value);
+              _applySortingAndFiltering();
+            },
+            itemBuilder: (context) {
+              final years = gigs.map((g) => g.date.year).toSet().toList()
+                ..sort();
+
+              return [
+                const PopupMenuItem(value: null, child: Text("Všetky roky")),
+                ...years.map((y) => PopupMenuItem(value: y, child: Text("$y"))),
+              ];
+            },
+          ),
+        ],
+      ),
+
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.add),
         onPressed: () {
           showModalBottomSheet(
             context: context,
-            isScrollControlled: true,
             useSafeArea: true,
+            isScrollControlled: true,
             builder: (_) {
               return AddEditGigSheet(
                 onSubmit: (g) async {
@@ -103,125 +159,160 @@ class _GigsScreenState extends ConsumerState<GigsScreen> {
           );
         },
       ),
+
       body: loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 12),
+                  Text("Načítavam vystúpenia..."),
+                ],
+              ),
+            )
           : gigs.isEmpty
-              ? const Center(child: Text("Žiadne vystúpenia"))
-              : ListView.builder(
-                  itemCount: gigs.length,
-                  itemBuilder: (ctx, i) {
-                    final g = gigs[i];
+          ? const Center(child: Text("Žiadne vystúpenia"))
+          : ListView.builder(
+              itemCount: gigs.length,
+              itemBuilder: (ctx, i) {
+                final g = gigs[i];
 
-                    final pres = presentCount[g.id!] ?? 0;
-                    final act = activeCount[g.id!] ?? 0;
+                final pres = presentCount[g.id!] ?? 0;
+                final act = activeCount[g.id!] ?? 0;
 
-                    return ListTile(
-                      leading: const Icon(Icons.celebration),
+                return ListTile(
+                  leading: const Icon(Icons.event),
 
-                      title: Text(
-                        "${g.date.day}.${g.date.month}.${g.date.year}",
-                      ),
+                  title: Text(
+                    "${g.date.day.toString().padLeft(2, '0')}."
+                    "${g.date.month.toString().padLeft(2, '0')}."
+                    "${g.date.year}  "
+                    "${g.fromTime.format(context)} – ${g.toTime.format(context)}"
+                    "${g.place.isNotEmpty ? "  ·  ${g.place}" : ""}",
+                  ),
 
-                      subtitle: Text(
-                        "${g.place}  ·  👥 $pres / $act",
-                      ),
+                  subtitle: Text("👥 $pres / $act"),
 
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // 👥 Attendance
-                          IconButton(
-                            icon: const Icon(Icons.people),
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      GigAttendanceScreen(gig: g),
-                                ),
-                              ).then((_) => _load());
-                            },
-                          ),
-
-                          // 🎼 Repertoire
-                          IconButton(
-                            icon: const Icon(Icons.music_note),
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      GigRepertoireScreen(gig: g),
-                                ),
-                              ).then((_) => _load());
-                            },
-                          ),
-
-                          // 🗑 Delete (len ak bez attendance)
-                          if (pres == 0)
-                            IconButton(
-                              icon: const Icon(Icons.delete),
-                              onPressed: () async {
-                                final confirm =
-                                    await showDialog<bool>(
-                                  context: context,
-                                  builder: (_) => AlertDialog(
-                                    title: const Text(
-                                        "Zmazať vystúpenie"),
-                                    content: const Text(
-                                        "Naozaj chceš zmazať toto vystúpenie?"),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(
-                                                context, false),
-                                        child:
-                                            const Text("Zrušiť"),
-                                      ),
-                                      FilledButton(
-                                        onPressed: () =>
-                                            Navigator.pop(
-                                                context, true),
-                                        child:
-                                            const Text("Zmazať"),
-                                      ),
-                                    ],
-                                  ),
-                                );
-
-                                if (confirm == true) {
-                                  final actions =
-                                      ref.read(gigsActionsProvider);
-                                  await actions.delete(g.id!);
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // ✏️ Edit
+                      IconButton(
+                        icon: const Icon(Icons.edit),
+                        tooltip: "Upraviť vystúpenie",
+                        onPressed: () {
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            useSafeArea: true,
+                            builder: (_) {
+                              return AddEditGigSheet(
+                                existing: g,
+                                onSubmit: (updated) async {
+                                  final actions = ref.read(
+                                    gigsActionsProvider,
+                                  );
+                                  await actions.update(updated);
                                   await _load();
-                                }
-                              },
-                            ),
-                        ],
+                                },
+                              );
+                            },
+                          );
+                        },
                       ),
 
-                      // EDIT
-                      onTap: () {
-                        showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          useSafeArea: true,
-                          builder: (_) {
-                            return AddEditGigSheet(
-                              existing: g,
-                              onSubmit: (updated) async {
-                                final actions =
-                                    ref.read(gigsActionsProvider);
-                                await actions.update(updated);
-                                await _load();
-                              },
+                      // 🗑 Delete – len ak attendance = 0
+                      if (pres == 0)
+                        IconButton(
+                          icon: const Icon(Icons.delete),
+                          tooltip: "Zmazať vystúpenie",
+                          onPressed: () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (_) => AlertDialog(
+                                title: const Text("Zmazať vystúpenie"),
+                                content: const Text(
+                                  "Naozaj chceš zmazať toto vystúpenie?",
+                                ),
+                                actions: [
+                                  TextButton(
+                                    child: const Text("Zrušiť"),
+                                    onPressed: () =>
+                                        Navigator.pop(context, false),
+                                  ),
+                                  FilledButton(
+                                    child: const Text("Zmazať"),
+                                    onPressed: () =>
+                                        Navigator.pop(context, true),
+                                  ),
+                                ],
+                              ),
                             );
+
+                            if (confirm == true) {
+                              final actions = ref.read(
+                                gigsActionsProvider,
+                              );
+                              await actions.delete(g.id!);
+                              await _load();
+                            }
+                          },
+                        ),
+
+                      // 🎼 Repertoár
+                      IconButton(
+                        icon: const Icon(Icons.music_note),
+                        tooltip: "Repertoár",
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  GigRepertoireScreen(gig: g),
+                            ),
+                          );
+                        },
+                      ),
+
+                      // 👥 Attendance
+                      IconButton(
+                        icon: const Icon(Icons.people),
+                        tooltip: "Dochádzka",
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  GigAttendanceScreen(gig: g),
+                            ),
+                          ).then((_) => _load());
+                        },
+                      ),
+                    ],
+                  ),
+
+                  // Kliknutie na celú položku → EDIT
+                  onTap: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      useSafeArea: true,
+                      builder: (_) {
+                        return AddEditGigSheet(
+                          existing: g,
+                          onSubmit: (updated) async {
+                            final actions = ref.read(gigsActionsProvider);
+                            await actions.update(updated);
+                            await _load();
                           },
                         );
                       },
                     );
                   },
-                ),
+                );
+              },
+            ),
     );
   }
 }

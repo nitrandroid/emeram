@@ -1,3 +1,4 @@
+// lib/screens/rehearsal_repertoire_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/database_provider.dart';
@@ -15,8 +16,7 @@ class RehearsalRepertoireScreen extends ConsumerStatefulWidget {
       _RehearsalRepertoireScreenState();
 }
 
-class _RehearsalRepertoireScreenState
-    extends ConsumerState<RehearsalRepertoireScreen> {
+class _RehearsalRepertoireScreenState extends ConsumerState<RehearsalRepertoireScreen> {
   List<Song> songs = [];
   List<SongCategory> categories = [];
   Set<int> selected = {};
@@ -40,6 +40,8 @@ class _RehearsalRepertoireScreenState
     final allSongs = await db.fetchSongs();
     final allCats = await db.fetchSongCategories();
     final rSongs = await db.fetchRehearsalSongIds(widget.rehearsal.id!);
+
+    if (!mounted) return;
 
     setState(() {
       songs = allSongs;

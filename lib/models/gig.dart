@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 
 class Gig {
   final int? id;
-  final DateTime date;
-  final TimeOfDay fromTime;
-  final TimeOfDay toTime;
+  final DateTime date; // dátum
+  final TimeOfDay fromTime; // čas začiatku
+  final TimeOfDay toTime; // čas konca
   final String place;
   final DateTime createdAt;
 
