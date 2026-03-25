@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/database_provider.dart';
 import '../models/rehearsal.dart';
+import '../models/person.dart';
 import '../widgets/add_edit_rehearsal_sheet.dart';
 import '../providers/rehearsals_actions_provider.dart';
 import 'rehearsal_attendance_screen.dart';
