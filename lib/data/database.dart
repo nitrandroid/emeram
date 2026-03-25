@@ -8,6 +8,7 @@ import '../models/person.dart';
 import '../models/song_category.dart';
 import '../models/song.dart';
 import '../models/rehearsal.dart';
+import '../models/gig.dart';
 
 class AppDatabase {
   AppDatabase._();
@@ -439,4 +440,114 @@ class AppDatabase {
 
     return rows.map((r) => r['rehearsalId'] as int).toSet();
   }
+
+  // ============================================================
+  // GIGSS CRUD
+  // ============================================================
+
+
+  Future<int> addGig(Gig g) async {
+    final db = await database;
+    return await db.insert('gigs', {
+      'date': g.date.toIso8601String(),
+      'fromTime': "${g.fromTime.hour}:${g.fromTime.minute}",
+      'toTime': "${g.toTime.hour}:${g.toTime.minute}",
+      'place': g.place,
+      'createdAt': g.createdAt.toIso8601String(),
+    });
+  }
+
+
+  Future<void> updateGig(Gig g) async {
+    final db = await database;
+    await db.update(
+      'gigs',
+      {
+        'date': g.date.toIso8601String(),
+        'fromTime': "${g.fromTime.hour}:${g.fromTime.minute}",
+        'toTime': "${g.toTime.hour}:${g.toTime.minute}",
+        'place': g.place,
+      },
+      where: 'id = ?',
+      whereArgs: [g.id],
+    );
+  }
+
+
+  Future<void> deleteGig(int id) async {
+    final db = await database;
+    await db.delete('gigs', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<Set<int>> fetchGigAttendancePersonIds(int gigId) async {
+    final db = await database;
+
+    final rows = await db.query(
+      'gig_attendance',
+      where: 'gigId = ?',
+      whereArgs: [gigId],
+    );
+
+    return rows.map((r) => r['personId'] as int).toSet();
+  }
+
+  Future<void> replaceGigAttendance(
+    int gigId,
+    Set<int> personIds,
+  ) async {
+    final db = await database;
+
+    await db.delete(
+      'gig_attendance',
+      where: 'gigId = ?',
+      whereArgs: [gigId],
+    );
+
+    for (final pid in personIds) {
+      await db.insert('gig_attendance', {
+        'gigId': gigId,
+        'personId': pid,
+        'createdAt': DateTime.now().toIso8601String(),
+      });
+    }
+  }
+
+  Future<Set<int>> fetchGigSongIds(int gigId) async {
+    final db = await database;
+
+    final rows = await db.query(
+      'gig_songs',
+      where: 'gigId = ?',
+      whereArgs: [gigId],
+    );
+
+    return rows.map((r) => r['songId'] as int).toSet();
+  }
+
+
+  Future<void> replaceGigSongs(int gigId, Set<int> songIds) async {
+    final db = await database;
+
+    await db.delete(
+      'gig_songs',
+      where: 'gigId = ?',
+      whereArgs: [gigId],
+    );
+
+    for (final sid in songIds) {
+      await db.insert('gig_songs', {
+        'gigId': gigId,
+        'songId': sid,
+        'createdAt': DateTime.now().toIso8601String(),
+      });
+    }
+  }
+
+
+  Future<List<Gig>> fetchGigs() async {
+    final db = await database;
+    final rows = await db.query('gigs');
+    return rows.map((r) => Gig.fromMap(r)).toList();
+  }
+
 }

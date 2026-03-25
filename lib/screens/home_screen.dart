@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'people_screen.dart';
 import 'songs_screen.dart';
 import 'rehearsals_screen.dart';
+import 'gigs_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -106,6 +107,18 @@ class HomeScreen extends StatelessWidget {
                 );
               },
             ),
+
+            buildMenuItem(
+               icon: Icons.celebration,
+               title: "Vystúpenia",
+               subtitle: "Prehľad a správa vystúpení",
+               onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const GigsScreen()),
+                );
+               },
+             ),
           ],
         ),
       ),
