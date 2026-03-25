@@ -41,6 +41,8 @@ class _GigRepertoireScreenState extends ConsumerState<GigRepertoireScreen> {
     final allCats = await db.fetchSongCategories();
     final gSongs = await db.fetchGigSongIds(widget.gig.id!);
 
+    if (!mounted) return;
+
     setState(() {
       songs = allSongs;
       categories = allCats;

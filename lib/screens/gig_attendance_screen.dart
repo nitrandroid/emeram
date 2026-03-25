@@ -56,6 +56,8 @@ class _GigAttendanceScreenState extends ConsumerState<GigAttendanceScreen> {
 
     final presentIds = await db.fetchGigAttendancePersonIds(widget.gig.id!);
 
+    if (!mounted) return;
+
     setState(() {
       people = active;
       categories = allCats;
@@ -79,6 +81,8 @@ class _GigAttendanceScreenState extends ConsumerState<GigAttendanceScreen> {
     final db = ref.read(appDatabaseProvider);
 
     await db.replaceGigAttendance(widget.gig.id!, present);
+
+    if (!mounted) return;
 
     setState(() {
       originalPresent = {...present};
