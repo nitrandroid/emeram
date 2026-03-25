@@ -332,6 +332,20 @@ class AppDatabase {
     return rows.map((r) => Rehearsal.fromMap(r)).toList();
   }
 
+  Future<List<Map<String, dynamic>>> fetchRehearsalsWithStats() async {
+    final db = await database;
+
+    return await db.rawQuery('''
+      SELECT 
+        r.*,
+        COUNT(DISTINCT ra.personId) as presentCount
+      FROM rehearsals r
+      LEFT JOIN rehearsal_attendance ra ON ra.rehearsalId = r.id
+      GROUP BY r.id
+      ORDER BY r.date DESC
+    ''');
+  }
+
   Future<void> updateRehearsal(Rehearsal r) async {
     final db = await database;
     await db.update(
@@ -370,8 +384,10 @@ class AppDatabase {
   Future<void> replaceRehearsalSongs(int rehearsalId, Set<int> songIds) async {
     final db = await database;
 
+    final batch = db.batch();
+
     // zmaž staré
-    await db.delete(
+    batch.delete(
       'rehearsal_songs',
       where: 'rehearsalId = ?',
       whereArgs: [rehearsalId],
@@ -379,12 +395,14 @@ class AppDatabase {
 
     // vlož nové
     for (final sid in songIds) {
-      await db.insert('rehearsal_songs', {
+      batch.insert('rehearsal_songs', {
         'rehearsalId': rehearsalId,
         'songId': sid,
         'createdAt': DateTime.now().toIso8601String(),
       });
     }
+
+    await batch.commit(noResult: true);
   }
 
   // ============================================================
@@ -411,21 +429,23 @@ class AppDatabase {
   ) async {
     final db = await database;
 
-    // 1) Odstráň staré údaje
-    await db.delete(
+    final batch = db.batch();
+
+    batch.delete(
       'rehearsal_attendance',
       where: 'rehearsalId = ?',
       whereArgs: [rehearsalId],
     );
 
-    // 2) Vlož nové
     for (final pid in personIds) {
-      await db.insert('rehearsal_attendance', {
+      batch.insert('rehearsal_attendance', {
         'rehearsalId': rehearsalId,
         'personId': pid,
         'createdAt': DateTime.now().toIso8601String(),
       });
     }
+
+    await batch.commit(noResult: true);
   }
 
   // Vráti ID skúšok, na ktorých bol člen prítomný
@@ -445,7 +465,6 @@ class AppDatabase {
   // GIGSS CRUD
   // ============================================================
 
-
   Future<int> addGig(Gig g) async {
     final db = await database;
     return await db.insert('gigs', {
@@ -456,7 +475,6 @@ class AppDatabase {
       'createdAt': g.createdAt.toIso8601String(),
     });
   }
-
 
   Future<void> updateGig(Gig g) async {
     final db = await database;
@@ -472,7 +490,6 @@ class AppDatabase {
       whereArgs: [g.id],
     );
   }
-
 
   Future<void> deleteGig(int id) async {
     final db = await database;
@@ -491,25 +508,21 @@ class AppDatabase {
     return rows.map((r) => r['personId'] as int).toSet();
   }
 
-  Future<void> replaceGigAttendance(
-    int gigId,
-    Set<int> personIds,
-  ) async {
+  Future<void> replaceGigAttendance(int gigId, Set<int> personIds) async {
     final db = await database;
+    final batch = db.batch();
 
-    await db.delete(
-      'gig_attendance',
-      where: 'gigId = ?',
-      whereArgs: [gigId],
-    );
+    batch.delete('gig_attendance', where: 'gigId = ?', whereArgs: [gigId]);
 
     for (final pid in personIds) {
-      await db.insert('gig_attendance', {
+      batch.insert('gig_attendance', {
         'gigId': gigId,
         'personId': pid,
         'createdAt': DateTime.now().toIso8601String(),
       });
     }
+
+    await batch.commit(noResult: true);
   }
 
   Future<Set<int>> fetchGigSongIds(int gigId) async {
@@ -524,25 +537,23 @@ class AppDatabase {
     return rows.map((r) => r['songId'] as int).toSet();
   }
 
-
   Future<void> replaceGigSongs(int gigId, Set<int> songIds) async {
     final db = await database;
 
-    await db.delete(
-      'gig_songs',
-      where: 'gigId = ?',
-      whereArgs: [gigId],
-    );
+    final batch = db.batch();
+
+    batch.delete('gig_songs', where: 'gigId = ?', whereArgs: [gigId]);
 
     for (final sid in songIds) {
-      await db.insert('gig_songs', {
+      batch.insert('gig_songs', {
         'gigId': gigId,
         'songId': sid,
         'createdAt': DateTime.now().toIso8601String(),
       });
     }
-  }
 
+    await batch.commit(noResult: true);
+  }
 
   Future<List<Gig>> fetchGigs() async {
     final db = await database;
@@ -550,4 +561,17 @@ class AppDatabase {
     return rows.map((r) => Gig.fromMap(r)).toList();
   }
 
+  Future<List<Map<String, dynamic>>> fetchGigsWithStats() async {
+    final db = await database;
+
+    return await db.rawQuery('''
+      SELECT 
+        g.*,
+        COUNT(DISTINCT ga.personId) as presentCount
+      FROM gigs g
+      LEFT JOIN gig_attendance ga ON ga.gigId = g.id
+      GROUP BY g.id
+      ORDER BY g.date DESC
+    ''');
+  }
 }

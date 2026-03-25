@@ -34,42 +34,37 @@ class _GigsScreenState extends ConsumerState<GigsScreen> {
   Future<void> _load() async {
     final db = ref.read(appDatabaseProvider);
 
-    final allGigs = await db.fetchGigs();
+    final rows = await db.fetchGigsWithStats();
+
+    final List<Gig> allGigs = rows.map((r) => Gig.fromMap(r)).toList();
+
     final List<Person> allPeople = await db.fetchPersons();
-
-    final attendanceRows = await (await db.database).query('gig_attendance');
-
-    final Map<int, int> presCounts = {};
+    final Map<String, int> activeCache = {};
+    final Map<int, int> presCounts = {
+      for (final r in rows) r['id'] as int: (r['presentCount'] as int? ?? 0),
+    };
     final Map<int, int> actCounts = {};
-    final Map<int, Set<int>> attendanceMap = {};
+    for (final r in rows) {
+      final d = DateTime.parse(r['date']);
+      final key = d.toIso8601String();
 
-    for (final row in attendanceRows) {
-      final gid = row['gigId'] as int;
-      final pid = row['personId'] as int;
-      attendanceMap.putIfAbsent(gid, () => {}).add(pid);
-    }
+      if (!activeCache.containsKey(key)) {
+        activeCache[key] = allPeople.where((p) {
+          final fromOk =
+              p.fromDate == null ||
+              p.fromDate!.isBefore(d) ||
+              p.fromDate!.isAtSameMomentAs(d);
 
-    for (final g in allGigs) {
-      final presentIds = attendanceMap[g.id!] ?? {};
-      presCounts[g.id!] = presentIds.length;
+          final toOk =
+              p.toDate == null ||
+              p.toDate!.isAfter(d) ||
+              p.toDate!.isAtSameMomentAs(d);
 
-      final d = g.date;
+          return fromOk && toOk;
+        }).length;
+      }
 
-      final active = allPeople.where((p) {
-        final fromOk =
-            p.fromDate == null ||
-            p.fromDate!.isBefore(d) ||
-            p.fromDate!.isAtSameMomentAs(d);
-
-        final toOk =
-            p.toDate == null ||
-            p.toDate!.isAfter(d) ||
-            p.toDate!.isAtSameMomentAs(d);
-
-        return fromOk && toOk;
-      }).length;
-
-      actCounts[g.id!] = active;
+      actCounts[r['id'] as int] = activeCache[key]!;
     }
 
     setState(() {
@@ -105,7 +100,8 @@ class _GigsScreenState extends ConsumerState<GigsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Vystúpenia"),
+      appBar: AppBar(
+        title: const Text("Vystúpenia"),
         actions: [
           // 🔁 TRIEDENIE ASC / DESC
           IconButton(
@@ -156,7 +152,7 @@ class _GigsScreenState extends ConsumerState<GigsScreen> {
                 },
               );
             },
-          );
+          ).then((_) => _load());
         },
       ),
 
@@ -210,15 +206,13 @@ class _GigsScreenState extends ConsumerState<GigsScreen> {
                               return AddEditGigSheet(
                                 existing: g,
                                 onSubmit: (updated) async {
-                                  final actions = ref.read(
-                                    gigsActionsProvider,
-                                  );
+                                  final actions = ref.read(gigsActionsProvider);
                                   await actions.update(updated);
                                   await _load();
                                 },
                               );
                             },
-                          );
+                          ).then((_) => _load());
                         },
                       ),
 
@@ -251,9 +245,7 @@ class _GigsScreenState extends ConsumerState<GigsScreen> {
                             );
 
                             if (confirm == true) {
-                              final actions = ref.read(
-                                gigsActionsProvider,
-                              );
+                              final actions = ref.read(gigsActionsProvider);
                               await actions.delete(g.id!);
                               await _load();
                             }
@@ -268,10 +260,9 @@ class _GigsScreenState extends ConsumerState<GigsScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) =>
-                                  GigRepertoireScreen(gig: g),
+                              builder: (_) => GigRepertoireScreen(gig: g),
                             ),
-                          );
+                          ).then((_) => _load());
                         },
                       ),
 
@@ -283,8 +274,7 @@ class _GigsScreenState extends ConsumerState<GigsScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) =>
-                                  GigAttendanceScreen(gig: g),
+                              builder: (_) => GigAttendanceScreen(gig: g),
                             ),
                           ).then((_) => _load());
                         },
@@ -308,7 +298,7 @@ class _GigsScreenState extends ConsumerState<GigsScreen> {
                           },
                         );
                       },
-                    );
+                    ).then((_) => _load());
                   },
                 );
               },

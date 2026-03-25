@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/database_provider.dart';
 import '../models/rehearsal.dart';
-import '../models/person.dart';
 import '../widgets/add_edit_rehearsal_sheet.dart';
 import '../providers/rehearsals_actions_provider.dart';
 import 'rehearsal_attendance_screen.dart';
@@ -34,43 +33,17 @@ class _RehearsalsScreenState extends ConsumerState<RehearsalsScreen> {
   Future<void> _load() async {
     final db = ref.read(appDatabaseProvider);
 
-    final allRehearsals = await db.fetchRehearsals();
-    final List<Person> allPeople = await db.fetchPersons();
+    final rows = await db.fetchRehearsalsWithStats();
 
-    final attendanceRows = await (await db.database).query('rehearsal_attendance',);
+    final List<Rehearsal> allRehearsals =
+        rows.map((r) => Rehearsal.fromMap(r)).toList();
 
-    final Map<int, int> presCounts = {};
-    final Map<int, int> actCounts = {};
-    final Map<int, Set<int>> attendanceMap = {};
+    final Map<int, int> presCounts = {
+      for (final r in rows)
+        r['id'] as int: (r['presentCount'] as int? ?? 0)
+    };
 
-    for (final row in attendanceRows) {
-      final rid = row['rehearsalId'] as int;
-      final pid = row['personId'] as int;
-      attendanceMap.putIfAbsent(rid, () => {}).add(pid);
-    }
-
-    for (final r in allRehearsals) {
-      final presentIds = attendanceMap[r.id!] ?? {};
-      presCounts[r.id!] = presentIds.length;
-
-      final d = r.date;
-
-      final active = allPeople.where((p) {
-        final fromOk =
-            p.fromDate == null ||
-            p.fromDate!.isBefore(d) ||
-            p.fromDate!.isAtSameMomentAs(d);
-
-        final toOk =
-            p.toDate == null ||
-            p.toDate!.isAfter(d) ||
-            p.toDate!.isAtSameMomentAs(d);
-
-        return fromOk && toOk;
-      }).length;
-
-      actCounts[r.id!] = active;
-    }
+    final Map<int, int> actCounts = {}; // zatiaľ nechávame pôvodné správanie
 
     setState(() {
       rehearsals = allRehearsals;
@@ -156,7 +129,7 @@ class _RehearsalsScreenState extends ConsumerState<RehearsalsScreen> {
                 },
               );
             },
-          );
+          ).then((_) => _load());
         },
       ),
 
@@ -218,7 +191,7 @@ class _RehearsalsScreenState extends ConsumerState<RehearsalsScreen> {
                                 },
                               );
                             },
-                          );
+                          ).then((_) => _load());
                         },
                       ),
 
@@ -271,7 +244,7 @@ class _RehearsalsScreenState extends ConsumerState<RehearsalsScreen> {
                               builder: (_) =>
                                   RehearsalRepertoireScreen(rehearsal: r),
                             ),
-                          );
+                          ).then((_) => _load());
                         },
                       ),
 
@@ -308,7 +281,7 @@ class _RehearsalsScreenState extends ConsumerState<RehearsalsScreen> {
                           },
                         );
                       },
-                    );
+                    ).then((_) => _load());
                   },
                 );
               },
