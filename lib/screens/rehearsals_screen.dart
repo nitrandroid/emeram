@@ -38,12 +38,34 @@ class _RehearsalsScreenState extends ConsumerState<RehearsalsScreen> {
     final List<Rehearsal> allRehearsals =
         rows.map((r) => Rehearsal.fromMap(r)).toList();
 
+    final List<Person> allPeople = await db.fetchPersons();
+    final Map<String, int> activeCache = {};
     final Map<int, int> presCounts = {
-      for (final r in rows)
-        r['id'] as int: (r['presentCount'] as int? ?? 0)
+      for (final r in rows) r['id'] as int: (r['presentCount'] as int? ?? 0),
     };
+    final Map<int, int> actCounts = {};
+    for (final r in rows) {
+      final d = DateTime.parse(r['date']);
+      final key = d.toIso8601String();
 
-    final Map<int, int> actCounts = {}; // zatiaľ nechávame pôvodné správanie
+      if (!activeCache.containsKey(key)) {
+        activeCache[key] = allPeople.where((p) {
+          final fromOk =
+              p.fromDate == null ||
+              p.fromDate!.isBefore(d) ||
+              p.fromDate!.isAtSameMomentAs(d);
+
+          final toOk =
+              p.toDate == null ||
+              p.toDate!.isAfter(d) ||
+              p.toDate!.isAtSameMomentAs(d);
+
+          return fromOk && toOk;
+        }).length;
+      }
+
+      actCounts[r['id'] as int] = activeCache[key]!;
+    }
 
     setState(() {
       rehearsals = allRehearsals;
@@ -183,9 +205,7 @@ class _RehearsalsScreenState extends ConsumerState<RehearsalsScreen> {
                               return AddEditRehearsalSheet(
                                 existing: r,
                                 onSubmit: (updated) async {
-                                  final actions = ref.read(
-                                    rehearsalsActionsProvider,
-                                  );
+                                  final actions = ref.read(rehearsalsActionsProvider,);
                                   await actions.update(updated);
                                   await _load();
                                 },
@@ -224,9 +244,7 @@ class _RehearsalsScreenState extends ConsumerState<RehearsalsScreen> {
                             );
 
                             if (confirm == true) {
-                              final actions = ref.read(
-                                rehearsalsActionsProvider,
-                              );
+                              final actions = ref.read(rehearsalsActionsProvider,);
                               await actions.delete(r.id!);
                               await _load();
                             }
@@ -241,8 +259,7 @@ class _RehearsalsScreenState extends ConsumerState<RehearsalsScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) =>
-                                  RehearsalRepertoireScreen(rehearsal: r),
+                              builder: (_) => RehearsalRepertoireScreen(rehearsal: r),
                             ),
                           ).then((_) => _load());
                         },
@@ -256,8 +273,7 @@ class _RehearsalsScreenState extends ConsumerState<RehearsalsScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) =>
-                                  RehearsalAttendanceScreen(rehearsal: r),
+                              builder: (_) => RehearsalAttendanceScreen(rehearsal: r),
                             ),
                           ).then((_) => _load());
                         },

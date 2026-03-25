@@ -100,8 +100,7 @@ class _GigsScreenState extends ConsumerState<GigsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Vystúpenia"),
+      appBar: AppBar(title: const Text("Vystúpenia"),
         actions: [
           // 🔁 TRIEDENIE ASC / DESC
           IconButton(
