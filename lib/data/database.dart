@@ -574,4 +574,46 @@ class AppDatabase {
       ORDER BY g.date DESC
     ''');
   }
+
+  // ============================================================
+  // ZOSTAVY
+  // ============================================================
+
+  Future<List<Map<String, dynamic>>> fetchAttendanceReport(int year) async {
+    final db = await database;
+
+    return await db.rawQuery(
+      '''
+      SELECT 
+        p.id,
+        p.firstName,
+        p.lastName,
+        COUNT(DISTINCT ra.rehearsalId) as attended,
+        (
+          SELECT COUNT(*)
+          FROM rehearsals r2
+          WHERE strftime('%Y', r2.date) = ?
+          AND (
+            (p.fromDate IS NULL OR p.fromDate <= r2.date) AND
+            (p.toDate IS NULL OR p.toDate >= r2.date)
+          )
+        ) as total
+      FROM persons p
+      LEFT JOIN rehearsal_attendance ra 
+        ON ra.personId = p.id
+      LEFT JOIN rehearsals r 
+        ON r.id = ra.rehearsalId
+        AND strftime('%Y', r.date) = ?
+      GROUP BY p.id
+      ORDER BY 
+        CASE 
+          WHEN total = 0 THEN 0 
+          ELSE CAST(attended AS REAL) / total 
+        END DESC,
+        p.lastName ASC,
+        p.firstName ASC
+    ''',
+      [year.toString(), year.toString()],
+    );
+  }
 }

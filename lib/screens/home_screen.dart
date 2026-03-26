@@ -3,6 +3,7 @@ import 'people_screen.dart';
 import 'songs_screen.dart';
 import 'rehearsals_screen.dart';
 import 'gigs_screen.dart';
+import 'reports_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -119,6 +120,19 @@ class HomeScreen extends StatelessWidget {
                 );
                },
              ),
+
+
+            buildMenuItem(
+              icon: Icons.bar_chart,
+              title: "Reporty",
+              subtitle: "Dochádzka podľa osôb",
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ReportsScreen()),
+                );
+              },
+            ),
           ],
         ),
       ),
