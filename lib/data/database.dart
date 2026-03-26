@@ -579,7 +579,7 @@ class AppDatabase {
   // ZOSTAVY
   // ============================================================
 
-  Future<List<Map<String, dynamic>>> fetchAttendanceReport(int year) async {
+  Future<List<Map<String, dynamic>>> fetchAttendanceReport(int? year) async {
     final db = await database;
 
     return await db.rawQuery(
@@ -592,7 +592,7 @@ class AppDatabase {
         (
           SELECT COUNT(*)
           FROM rehearsals r2
-          WHERE strftime('%Y', r2.date) = ?
+          WHERE (? IS NULL OR strftime('%Y', r2.date) = ?)
           AND (
             (p.fromDate IS NULL OR p.fromDate <= r2.date) AND
             (p.toDate IS NULL OR p.toDate >= r2.date)
@@ -603,7 +603,7 @@ class AppDatabase {
         ON ra.personId = p.id
       LEFT JOIN rehearsals r 
         ON r.id = ra.rehearsalId
-        AND strftime('%Y', r.date) = ?
+        AND (? IS NULL OR strftime('%Y', r.date) = ?)
       GROUP BY p.id
       ORDER BY 
         CASE 
@@ -613,7 +613,39 @@ class AppDatabase {
         p.lastName ASC,
         p.firstName ASC
     ''',
-      [year.toString(), year.toString()],
+      [year?.toString(), year?.toString(), year?.toString(), year?.toString()],
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> fetchGigAttendanceReport(int? year) async {
+    final db = await database;
+
+    return await db.rawQuery(
+      '''
+      SELECT 
+        p.id,
+        p.firstName,
+        p.lastName,
+        COUNT(DISTINCT ga.gigId) as attended,
+        (
+          SELECT COUNT(*)
+          FROM gigs g2
+          WHERE (? IS NULL OR strftime('%Y', g2.date) = ?)
+          AND (
+            (p.fromDate IS NULL OR p.fromDate <= g2.date) AND
+            (p.toDate IS NULL OR p.toDate >= g2.date)
+          )
+        ) as total
+      FROM persons p
+      LEFT JOIN gig_attendance ga 
+        ON ga.personId = p.id
+      LEFT JOIN gigs g 
+        ON g.id = ga.gigId
+        AND (? IS NULL OR strftime('%Y', g.date) = ?)
+      GROUP BY p.id
+      ORDER BY attended DESC
+    ''',
+      [year?.toString(), year?.toString(), year?.toString(), year?.toString()],
     );
   }
 }
