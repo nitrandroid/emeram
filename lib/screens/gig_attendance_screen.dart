@@ -5,6 +5,7 @@ import '../models/gig.dart';
 import '../models/person.dart';
 import '../models/category.dart';
 import '../providers/database_provider.dart';
+import '../utils/slovak_sort.dart';
 
 class GigAttendanceScreen extends ConsumerStatefulWidget {
   final Gig gig;
@@ -167,11 +168,8 @@ class _GigAttendanceScreenState extends ConsumerState<GigAttendanceScreen> {
 
   // 🔥 3️⃣ Oddelenie podľa hlasových skupín
   Widget _buildGroupedList(BuildContext context) {
-    // zoradenie kategórií podľa isDefault a potom názvu
-    final sortedCats = [
-      ...categories.where((c) => c.isDefault),
-      ...categories.where((c) => !c.isDefault),
-    ];
+    // zoradenie kategórií
+    final sortedCats = sortSatb(categories, (c) => c.name);
 
     final List<Widget> widgets = [];
 
@@ -184,7 +182,23 @@ class _GigAttendanceScreenState extends ConsumerState<GigAttendanceScreen> {
       widgets.add(
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Text(cat.name, style: Theme.of(context).textTheme.titleMedium),
+          child: Row(
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: Color(cat.color),
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                cat.name,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ],
+          ),
         ),
       );
 

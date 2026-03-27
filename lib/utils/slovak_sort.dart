@@ -133,6 +133,23 @@ int sortAsc(String a, String b) => slovakCompare(a, b);
 /// Zostupné slovenské triedenie (Ž → A).
 int sortDesc(String a, String b) => -slovakCompare(a, b);
 
+/// SATB triedenie kategórií (S, A, T, B + ostatné podľa SK sort)
+List<T> sortSatb<T>(
+  List<T> items,
+  String Function(T) getName,
+) {
+  const satbOrder = ["Soprán", "Alt", "Tenor", "Bas"];
+
+  final satb = items.where((e) => satbOrder.contains(getName(e))).toList()
+    ..sort((a, b) =>
+        satbOrder.indexOf(getName(a)).compareTo(satbOrder.indexOf(getName(b))));
+
+  final other = items.where((e) => !satbOrder.contains(getName(e))).toList()
+    ..sort((a, b) => slovakCompare(getName(a), getName(b)));
+
+  return [...satb, ...other];
+}
+
 /// Odstránenie diakritiky pre potreby vyhľadávania.
 /// Triedenie ostáva slovenské – toto slúži len na fulltext search.
 String removeDiacritics(String input) {
