@@ -5,6 +5,8 @@ import '../providers/database_provider.dart';
 import '../models/gig.dart';
 import '../models/song.dart';
 import '../models/song_category.dart';
+import '../utils/song_sort.dart';
+import '../utils/slovak_sort.dart';
 
 class GigRepertoireScreen extends ConsumerStatefulWidget {
   final Gig gig;
@@ -160,6 +162,13 @@ class _GigRepertoireScreenState extends ConsumerState<GigRepertoireScreen> {
   }
 
   Widget _buildList(BuildContext context) {
+    songs.sort(
+      (a, b) => chainCompare<Song>(
+        [compareTitle, compareAuthor, compareArranger],
+        a,
+        b,
+      ),
+    );
     return ListView.builder(
       itemCount: songs.length,
       itemBuilder: (ctx, i) {

@@ -5,6 +5,8 @@ import '../providers/database_provider.dart';
 import '../models/rehearsal.dart';
 import '../models/song.dart';
 import '../models/song_category.dart';
+import '../utils/song_sort.dart';
+import '../utils/slovak_sort.dart';
 
 class RehearsalRepertoireScreen extends ConsumerStatefulWidget {
   final Rehearsal rehearsal;
@@ -16,7 +18,8 @@ class RehearsalRepertoireScreen extends ConsumerStatefulWidget {
       _RehearsalRepertoireScreenState();
 }
 
-class _RehearsalRepertoireScreenState extends ConsumerState<RehearsalRepertoireScreen> {
+class _RehearsalRepertoireScreenState
+    extends ConsumerState<RehearsalRepertoireScreen> {
   List<Song> songs = [];
   List<SongCategory> categories = [];
   Set<int> selected = {};
@@ -160,6 +163,13 @@ class _RehearsalRepertoireScreenState extends ConsumerState<RehearsalRepertoireS
   }
 
   Widget _buildList(BuildContext context) {
+    songs.sort(
+      (a, b) => chainCompare<Song>(
+        [compareTitle, compareAuthor, compareArranger],
+        a,
+        b,
+      ),
+    );
     return ListView.builder(
       itemCount: songs.length,
       itemBuilder: (ctx, i) {
