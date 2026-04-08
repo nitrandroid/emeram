@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import '../data/database.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class MaintenanceScreen extends StatefulWidget {
   const MaintenanceScreen({super.key});
@@ -160,7 +161,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
     }
   }
 
-// 🔥 KONTROLA
+  // 🔥 KONTROLA
   Future<void> _checkDb() async {
     final db = AppDatabase.instance;
     final database = await db.database;
@@ -175,9 +176,65 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text("Kontrola databázy"),
-        content: Text(ok
-            ? "Databáza je v poriadku."
-            : "Databáza obsahuje chyby."),
+        content: Text(
+          ok ? "Databáza je v poriadku." : "Databáza obsahuje chyby.",
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // PREINDEXOVANIE
+  Future<void> _reindexDb() async {
+    final db = AppDatabase.instance;
+    final database = await db.database;
+
+    await database.execute('REINDEX');
+    await database.execute('ANALYZE');
+
+    if (!mounted) return;
+
+    await showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Optimalizácia databázy"),
+        content: const Text("Databáza bola úspešne optimalizovaná."),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // INFORMÁCIE O APLIKÁCII
+  Future<void> _showAppInfo() async {
+    final info = await PackageInfo.fromPlatform();
+    final db = AppDatabase.instance;
+    final dbPath = (await db.database).path;
+
+    final file = File(dbPath);
+    final size = await file.length();
+
+    if (!mounted) return;
+
+    await showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Informácie o aplikácii"),
+        content: Text(
+          "Verzia: ${info.version}\n"
+          "Build: ${info.buildNumber}\n\n"
+          "Databáza:\n$dbPath\n\n"
+          "Veľkosť: ${(size / 1024).toStringAsFixed(1)} KB",
+        ),
         actions: [
           FilledButton(
             onPressed: () => Navigator.pop(context),
@@ -212,10 +269,12 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
           ListTile(
             leading: const Icon(Icons.refresh),
             title: const Text("Preindexovanie databázy"),
+            onTap: _reindexDb,
           ),
           ListTile(
             leading: const Icon(Icons.info_outline),
             title: const Text("Informácie o aplikácii"),
+            onTap: _showAppInfo,
           ),
         ],
       ),
