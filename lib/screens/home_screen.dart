@@ -66,87 +66,85 @@ class HomeScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text("Spevácky zbor Emerám")),
-      body: Padding(
+      body: ListView(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // ČLENOVIA ZBORU
-            buildMenuItem(
-              icon: Icons.people,
-              title: "Členovia zboru",
-              subtitle: "Zobrazenie, filtrovanie a správa osôb",
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const PeopleScreen()),
-                );
-              },
-            ),
+        children: [
+          // ČLENOVIA ZBORU
+          buildMenuItem(
+            icon: Icons.people,
+            title: "Členovia zboru",
+            subtitle: "Zobrazenie, filtrovanie a správa osôb",
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PeopleScreen()),
+              );
+            },
+          ),
 
-            // ============================
-            // SKLADBY (NOVÁ POLOŽKA)
-            // ============================
-            buildMenuItem(
-              icon: Icons.music_note,
-              title: "Skladby",
-              subtitle: "Prehľad, filtrovanie a správa skladieb",
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SongsScreen()),
-                );
-              },
-            ),
+          // ============================
+          // SKLADBY (NOVÁ POLOŽKA)
+          // ============================
+          buildMenuItem(
+            icon: Icons.music_note,
+            title: "Skladby",
+            subtitle: "Prehľad, filtrovanie a správa skladieb",
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SongsScreen()),
+              );
+            },
+          ),
 
-            buildMenuItem(
-              icon: Icons.event,
-              title: "Skúšky",
-              subtitle: "Prehľad a správa skúšok",
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const RehearsalsScreen()),
-                );
-              },
-            ),
+          buildMenuItem(
+            icon: Icons.event,
+            title: "Skúšky",
+            subtitle: "Prehľad a správa skúšok",
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const RehearsalsScreen()),
+              );
+            },
+          ),
 
-            buildMenuItem(
-              icon: Icons.celebration,
-              title: "Vystúpenia",
-              subtitle: "Prehľad a správa vystúpení",
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const GigsScreen()),
-                );
-              },
-            ),
+          buildMenuItem(
+            icon: Icons.celebration,
+            title: "Vystúpenia",
+            subtitle: "Prehľad a správa vystúpení",
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const GigsScreen()),
+              );
+            },
+          ),
 
-            buildMenuItem(
-              icon: Icons.bar_chart,
-              title: "Reporty",
-              subtitle: "Dochádzka podľa osôb",
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ReportsScreen()),
-                );
-              },
-            ),
+          buildMenuItem(
+            icon: Icons.bar_chart,
+            title: "Reporty",
+            subtitle: "Dochádzka podľa osôb",
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ReportsScreen()),
+              );
+            },
+          ),
 
-            buildMenuItem(
-              icon: Icons.settings,
-              title: "Údržba",
-              subtitle: "Export, import a správa databázy",
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const MaintenanceScreen()),
-                );
-              },
-            ),
-          ],
-        ),
+          buildMenuItem(
+            icon: Icons.settings,
+            title: "Údržba",
+            subtitle: "Export, import a správa databázy",
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const MaintenanceScreen()),
+              );
+            },
+          ),
+        ],
       ),
     );
   }

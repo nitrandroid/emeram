@@ -10,6 +10,28 @@ import 'widgets/responsive_root.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'data/database.dart';
 
+class MyScrollBehavior extends MaterialScrollBehavior {
+  @override
+  Widget buildScrollbar(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) {
+    final isDesktop =
+        defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.linux ||
+        defaultTargetPlatform == TargetPlatform.macOS;
+
+    if (!isDesktop) return child;
+
+    return Scrollbar(
+      controller: details.controller,
+      thumbVisibility: true,
+      child: child,
+    );
+  }
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -35,6 +57,7 @@ class EmeramApp extends StatelessWidget {
     return MaterialApp(
       title: 'Emerám',
       debugShowCheckedModeBanner: false,
+      scrollBehavior: MyScrollBehavior(),
       theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.blue),
 
       supportedLocales: const [Locale('sk', 'SK'), Locale('en', 'US')],
