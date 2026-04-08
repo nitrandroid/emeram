@@ -4,6 +4,7 @@ import 'songs_screen.dart';
 import 'rehearsals_screen.dart';
 import 'gigs_screen.dart';
 import 'reports_screen.dart';
+import 'maintenance_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -110,17 +111,16 @@ class HomeScreen extends StatelessWidget {
             ),
 
             buildMenuItem(
-               icon: Icons.celebration,
-               title: "Vystúpenia",
-               subtitle: "Prehľad a správa vystúpení",
-               onTap: () {
+              icon: Icons.celebration,
+              title: "Vystúpenia",
+              subtitle: "Prehľad a správa vystúpení",
+              onTap: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const GigsScreen()),
                 );
-               },
-             ),
-
+              },
+            ),
 
             buildMenuItem(
               icon: Icons.bar_chart,
@@ -130,6 +130,18 @@ class HomeScreen extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const ReportsScreen()),
+                );
+              },
+            ),
+
+            buildMenuItem(
+              icon: Icons.settings,
+              title: "Údržba",
+              subtitle: "Export, import a správa databázy",
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const MaintenanceScreen()),
                 );
               },
             ),

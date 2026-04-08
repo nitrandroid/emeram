@@ -22,6 +22,13 @@ class AppDatabase {
     return _db!;
   }
 
+  Future<void> reset() async {
+    if (_db != null) {
+      await _db!.close();
+      _db = null;
+    }
+  }
+
   Future<Database> _initDb() async {
     // ✅ multiplatform správna cesta
     late String path;

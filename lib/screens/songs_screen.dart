@@ -158,6 +158,27 @@ class _SongsScreenState extends ConsumerState<SongsScreen> {
         ],
       ),
 
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            useSafeArea: true,
+            builder: (_) {
+              return AddEditSongSheet(
+                categories: categories,
+                onSubmit: (song) async {
+                  final actions = ref.read(songsActionsProvider);
+                  await actions.add(song);
+                  await _loadCategories();
+                },
+              );
+            },
+          );
+        },
+        child: const Icon(Icons.add),
+      ),
+
       body: songsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => const Center(child: Text("Chyba")),
