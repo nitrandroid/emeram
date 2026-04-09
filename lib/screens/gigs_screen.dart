@@ -1,6 +1,7 @@
 // lib/screens/gigs_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../providers/database_provider.dart';
 import '../models/gig.dart';
 import '../models/person.dart';
@@ -17,13 +18,26 @@ class GigsScreen extends ConsumerStatefulWidget {
 }
 
 class _GigsScreenState extends ConsumerState<GigsScreen> {
+  static const int allYearsValue = -1;
+
+  List<Gig> _allGigs = [];
   List<Gig> gigs = [];
+
   Map<int, int> presentCount = {}; // gigId → prítomní
   Map<int, int> activeCount = {}; // gigId → aktívni
-  bool loading = true;
 
+  bool loading = true;
   bool sortAscending = false; // 🔥 DEFAULT = NAJNOVŠIE HORE
-  int? filterYear; // null = všetky roky
+
+  int selectedYearValue = allYearsValue;
+
+  int? get selectedYear =>
+      selectedYearValue == allYearsValue ? null : selectedYearValue;
+
+  String get titleText =>
+      selectedYear == null
+          ? "Vystúpenia – všetky roky"
+          : "Vystúpenia – rok $selectedYear";
 
   @override
   void initState() {
@@ -35,15 +49,17 @@ class _GigsScreenState extends ConsumerState<GigsScreen> {
     final db = ref.read(appDatabaseProvider);
 
     final rows = await db.fetchGigsWithStats();
-
-    final List<Gig> allGigs = rows.map((r) => Gig.fromMap(r)).toList();
+    final List<Gig> allGigs =
+        rows.map((r) => Gig.fromMap(r)).toList();
 
     final List<Person> allPeople = await db.fetchPersons();
     final Map<String, int> activeCache = {};
     final Map<int, int> presCounts = {
-      for (final r in rows) r['id'] as int: (r['presentCount'] as int? ?? 0),
+      for (final r in rows)
+        r['id'] as int: (r['presentCount'] as int? ?? 0),
     };
     final Map<int, int> actCounts = {};
+
     for (final r in rows) {
       final d = DateTime.parse(r['date']);
       final key = d.toIso8601String();
@@ -68,28 +84,29 @@ class _GigsScreenState extends ConsumerState<GigsScreen> {
     }
 
     setState(() {
-      gigs = allGigs;
+      _allGigs = allGigs;
       presentCount = presCounts;
       activeCount = actCounts;
       loading = false;
     });
 
-    _applySortingAndFiltering(); // 💡 uplatní default DESC triedenie
+    _applySortingAndFiltering();
   }
 
   // 🔧 TRIEDENIE + FILTER
   void _applySortingAndFiltering() {
-    List<Gig> list = [...gigs];
+    List<Gig> list = [..._allGigs];
 
     // FILTER podľa roku
-    if (filterYear != null) {
-      list = list.where((g) => g.date.year == filterYear).toList();
+    if (selectedYear != null) {
+      list = list.where((g) => g.date.year == selectedYear).toList();
     }
 
     // TRIEDENIE
     list.sort(
-      (a, b) =>
-          sortAscending ? a.date.compareTo(b.date) : b.date.compareTo(a.date),
+      (a, b) => sortAscending
+          ? a.date.compareTo(b.date)
+          : b.date.compareTo(a.date),
     );
 
     setState(() {
@@ -97,40 +114,53 @@ class _GigsScreenState extends ConsumerState<GigsScreen> {
     });
   }
 
+  List<int> get availableYears =>
+      _allGigs.map((g) => g.date.year).toSet().toList()
+        ..sort();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Vystúpenia"),
+      appBar: AppBar(
+        title: Text(titleText),
         actions: [
           // 🔁 TRIEDENIE ASC / DESC
           IconButton(
             icon: Icon(
-              sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+              sortAscending
+                  ? Icons.arrow_upward
+                  : Icons.arrow_downward,
             ),
-            tooltip: sortAscending ? "Triediť zostupne" : "Triediť vzostupne",
+            tooltip:
+                sortAscending ? "Triediť zostupne" : "Triediť vzostupne",
             onPressed: () {
               setState(() => sortAscending = !sortAscending);
               _applySortingAndFiltering();
             },
           ),
 
-          // 🔍 FILTER PODĽA ROKU
-          PopupMenuButton<int?>(
+          // 🔍 FILTER PODĽA ROKU (SENTINEL)
+          PopupMenuButton<int>(
             icon: const Icon(Icons.filter_alt),
             tooltip: "Filter podľa roku",
             onSelected: (value) {
-              setState(() => filterYear = value);
+              setState(() {
+                selectedYearValue = value;
+              });
               _applySortingAndFiltering();
             },
-            itemBuilder: (context) {
-              final years = gigs.map((g) => g.date.year).toSet().toList()
-                ..sort();
-
-              return [
-                const PopupMenuItem(value: null, child: Text("Všetky roky")),
-                ...years.map((y) => PopupMenuItem(value: y, child: Text("$y"))),
-              ];
-            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: allYearsValue,
+                child: Text("Všetky roky"),
+              ),
+              ...availableYears.map(
+                (y) => PopupMenuItem(
+                  value: y,
+                  child: Text("$y"),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -167,141 +197,136 @@ class _GigsScreenState extends ConsumerState<GigsScreen> {
               ),
             )
           : gigs.isEmpty
-          ? const Center(child: Text("Žiadne vystúpenia"))
-          : ListView.builder(
-              itemCount: gigs.length,
-              itemBuilder: (ctx, i) {
-                final g = gigs[i];
+              ? const Center(child: Text("Žiadne vystúpenia"))
+              : ListView.builder(
+                  itemCount: gigs.length,
+                  itemBuilder: (ctx, i) {
+                    final g = gigs[i];
 
-                final pres = presentCount[g.id!] ?? 0;
-                final act = activeCount[g.id!] ?? 0;
+                    final pres = presentCount[g.id!] ?? 0;
+                    final act = activeCount[g.id!] ?? 0;
 
-                return ListTile(
-                  leading: const Icon(Icons.event),
-
-                  title: Text(
-                    "${g.date.day.toString().padLeft(2, '0')}."
-                    "${g.date.month.toString().padLeft(2, '0')}."
-                    "${g.date.year}  "
-                    "${g.fromTime} – ${g.toTime}"
-                    "${g.place.isNotEmpty ? "  ·  ${g.place}" : ""}",
-                  ),
-
-                  subtitle: Text("👥 $pres / $act"),
-
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // ✏️ Edit
-                      IconButton(
-                        icon: const Icon(Icons.edit),
-                        tooltip: "Upraviť vystúpenie",
-                        onPressed: () {
-                          showModalBottomSheet(
-                            context: context,
-                            isScrollControlled: true,
-                            useSafeArea: true,
-                            builder: (_) {
-                              return AddEditGigSheet(
-                                existing: g,
-                                onSubmit: (updated) async {
-                                  final actions = ref.read(gigsActionsProvider);
-                                  await actions.update(updated);
-                                  await _load();
+                    return ListTile(
+                      leading: const Icon(Icons.event),
+                      title: Text(
+                        "${g.date.day.toString().padLeft(2, '0')}."
+                        "${g.date.month.toString().padLeft(2, '0')}."
+                        "${g.date.year}  "
+                        "${g.fromTime} – ${g.toTime}"
+                        "${g.place.isNotEmpty ? "  ·  ${g.place}" : ""}",
+                      ),
+                      subtitle: Text("👥 $pres / $act"),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit),
+                            tooltip: "Upraviť vystúpenie",
+                            onPressed: () {
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                useSafeArea: true,
+                                builder: (_) {
+                                  return AddEditGigSheet(
+                                    existing: g,
+                                    onSubmit: (updated) async {
+                                      final actions =
+                                          ref.read(gigsActionsProvider);
+                                      await actions.update(updated);
+                                      await _load();
+                                    },
+                                  );
                                 },
-                              );
+                              ).then((_) => _load());
                             },
-                          ).then((_) => _load());
-                        },
-                      ),
+                          ),
+                          if (pres == 0)
+                            IconButton(
+                              icon: const Icon(Icons.delete),
+                              tooltip: "Zmazať vystúpenie",
+                              onPressed: () async {
+                                final confirm =
+                                    await showDialog<bool>(
+                                  context: context,
+                                  builder: (_) => AlertDialog(
+                                    title: const Text(
+                                        "Zmazať vystúpenie"),
+                                    content: const Text(
+                                      "Naozaj chceš zmazať toto vystúpenie?",
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        child: const Text("Zrušiť"),
+                                        onPressed: () =>
+                                            Navigator.pop(context, false),
+                                      ),
+                                      FilledButton(
+                                        child: const Text("Zmazať"),
+                                        onPressed: () =>
+                                            Navigator.pop(context, true),
+                                      ),
+                                    ],
+                                  ),
+                                );
 
-                      // 🗑 Delete – len ak attendance = 0
-                      if (pres == 0)
-                        IconButton(
-                          icon: const Icon(Icons.delete),
-                          tooltip: "Zmazať vystúpenie",
-                          onPressed: () async {
-                            final confirm = await showDialog<bool>(
-                              context: context,
-                              builder: (_) => AlertDialog(
-                                title: const Text("Zmazať vystúpenie"),
-                                content: const Text(
-                                  "Naozaj chceš zmazať toto vystúpenie?",
+                                if (confirm == true) {
+                                  final actions =
+                                      ref.read(gigsActionsProvider);
+                                  await actions.delete(g.id!);
+                                  await _load();
+                                }
+                              },
+                            ),
+                          IconButton(
+                            icon: const Icon(Icons.music_note),
+                            tooltip: "Repertoár",
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      GigRepertoireScreen(gig: g),
                                 ),
-                                actions: [
-                                  TextButton(
-                                    child: const Text("Zrušiť"),
-                                    onPressed: () =>
-                                        Navigator.pop(context, false),
-                                  ),
-                                  FilledButton(
-                                    child: const Text("Zmazať"),
-                                    onPressed: () =>
-                                        Navigator.pop(context, true),
-                                  ),
-                                ],
-                              ),
+                              ).then((_) => _load());
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.people),
+                            tooltip: "Dochádzka",
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      GigAttendanceScreen(gig: g),
+                                ),
+                              ).then((_) => _load());
+                            },
+                          ),
+                        ],
+                      ),
+                      onTap: () {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          useSafeArea: true,
+                          builder: (_) {
+                            return AddEditGigSheet(
+                              existing: g,
+                              onSubmit: (updated) async {
+                                final actions =
+                                    ref.read(gigsActionsProvider);
+                                await actions.update(updated);
+                                await _load();
+                              },
                             );
-
-                            if (confirm == true) {
-                              final actions = ref.read(gigsActionsProvider);
-                              await actions.delete(g.id!);
-                              await _load();
-                            }
                           },
-                        ),
-
-                      // 🎼 Repertoár
-                      IconButton(
-                        icon: const Icon(Icons.music_note),
-                        tooltip: "Repertoár",
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => GigRepertoireScreen(gig: g),
-                            ),
-                          ).then((_) => _load());
-                        },
-                      ),
-
-                      // 👥 Attendance
-                      IconButton(
-                        icon: const Icon(Icons.people),
-                        tooltip: "Dochádzka",
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => GigAttendanceScreen(gig: g),
-                            ),
-                          ).then((_) => _load());
-                        },
-                      ),
-                    ],
-                  ),
-
-                  // Kliknutie na celú položku → EDIT
-                  onTap: () {
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      useSafeArea: true,
-                      builder: (_) {
-                        return AddEditGigSheet(
-                          existing: g,
-                          onSubmit: (updated) async {
-                            final actions = ref.read(gigsActionsProvider);
-                            await actions.update(updated);
-                            await _load();
-                          },
-                        );
+                        ).then((_) => _load());
                       },
-                    ).then((_) => _load());
+                    );
                   },
-                );
-              },
-            ),
+                ),
     );
   }
 }

@@ -1,6 +1,7 @@
 // lib/screens/rehearsals_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../providers/database_provider.dart';
 import '../models/rehearsal.dart';
 import '../models/person.dart';
@@ -13,17 +14,31 @@ class RehearsalsScreen extends ConsumerStatefulWidget {
   const RehearsalsScreen({super.key});
 
   @override
-  ConsumerState<RehearsalsScreen> createState() => _RehearsalsScreenState();
+  ConsumerState<RehearsalsScreen> createState() =>
+      _RehearsalsScreenState();
 }
 
 class _RehearsalsScreenState extends ConsumerState<RehearsalsScreen> {
+  static const int allYearsValue = -1;
+
+  List<Rehearsal> _allRehearsals = [];
   List<Rehearsal> rehearsals = [];
+
   Map<int, int> presentCount = {}; // rehearsalId → prítomní
   Map<int, int> activeCount = {}; // rehearsalId → aktívni
-  bool loading = true;
 
+  bool loading = true;
   bool sortAscending = false; // 🔥 DEFAULT = NAJNOVŠIE HORE
-  int? filterYear; // null = všetky roky
+
+  int selectedYearValue = allYearsValue;
+
+  int? get selectedYear =>
+      selectedYearValue == allYearsValue ? null : selectedYearValue;
+
+  String get titleText =>
+      selectedYear == null
+          ? "Skúšky – všetky roky"
+          : "Skúšky – rok $selectedYear";
 
   @override
   void initState() {
@@ -35,16 +50,17 @@ class _RehearsalsScreenState extends ConsumerState<RehearsalsScreen> {
     final db = ref.read(appDatabaseProvider);
 
     final rows = await db.fetchRehearsalsWithStats();
-
     final List<Rehearsal> allRehearsals =
         rows.map((r) => Rehearsal.fromMap(r)).toList();
 
     final List<Person> allPeople = await db.fetchPersons();
     final Map<String, int> activeCache = {};
     final Map<int, int> presCounts = {
-      for (final r in rows) r['id'] as int: (r['presentCount'] as int? ?? 0),
+      for (final r in rows)
+        r['id'] as int: (r['presentCount'] as int? ?? 0),
     };
     final Map<int, int> actCounts = {};
+
     for (final r in rows) {
       final d = DateTime.parse(r['date']);
       final key = d.toIso8601String();
@@ -69,28 +85,31 @@ class _RehearsalsScreenState extends ConsumerState<RehearsalsScreen> {
     }
 
     setState(() {
-      rehearsals = allRehearsals;
+      _allRehearsals = allRehearsals;
       presentCount = presCounts;
       activeCount = actCounts;
       loading = false;
     });
 
-    _applySortingAndFiltering(); // 💡 uplatní default DESC triedenie
+    _applySortingAndFiltering();
   }
 
   // 🔧 TRIEDENIE + FILTER
   void _applySortingAndFiltering() {
-    List<Rehearsal> list = [...rehearsals];
+    List<Rehearsal> list = [..._allRehearsals];
 
     // FILTER podľa roku
-    if (filterYear != null) {
-      list = list.where((r) => r.date.year == filterYear).toList();
+    if (selectedYear != null) {
+      list = list
+          .where((r) => r.date.year == selectedYear)
+          .toList();
     }
 
     // TRIEDENIE
     list.sort(
-      (a, b) =>
-          sortAscending ? a.date.compareTo(b.date) : b.date.compareTo(a.date),
+      (a, b) => sortAscending
+          ? a.date.compareTo(b.date)
+          : b.date.compareTo(a.date),
     );
 
     setState(() {
@@ -98,40 +117,53 @@ class _RehearsalsScreenState extends ConsumerState<RehearsalsScreen> {
     });
   }
 
+  List<int> get availableYears =>
+      _allRehearsals.map((r) => r.date.year).toSet().toList()
+        ..sort();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Skúšky"),
+      appBar: AppBar(
+        title: Text(titleText),
         actions: [
           // 🔁 TRIEDENIE ASC / DESC
           IconButton(
             icon: Icon(
-              sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+              sortAscending
+                  ? Icons.arrow_upward
+                  : Icons.arrow_downward,
             ),
-            tooltip: sortAscending ? "Triediť zostupne" : "Triediť vzostupne",
+            tooltip:
+                sortAscending ? "Triediť zostupne" : "Triediť vzostupne",
             onPressed: () {
               setState(() => sortAscending = !sortAscending);
               _applySortingAndFiltering();
             },
           ),
 
-          // 🔍 FILTER PODĽA ROKU
-          PopupMenuButton<int?>(
+          // 🔍 FILTER PODĽA ROKU (SENTINEL)
+          PopupMenuButton<int>(
             icon: const Icon(Icons.filter_alt),
             tooltip: "Filter podľa roku",
             onSelected: (value) {
-              setState(() => filterYear = value);
+              setState(() {
+                selectedYearValue = value;
+              });
               _applySortingAndFiltering();
             },
-            itemBuilder: (context) {
-              final years = rehearsals.map((r) => r.date.year).toSet().toList()
-                ..sort();
-
-              return [
-                const PopupMenuItem(value: null, child: Text("Všetky roky")),
-                ...years.map((y) => PopupMenuItem(value: y, child: Text("$y"))),
-              ];
-            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: allYearsValue,
+                child: Text("Všetky roky"),
+              ),
+              ...availableYears.map(
+                (y) => PopupMenuItem(
+                  value: y,
+                  child: Text("$y"),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -168,141 +200,138 @@ class _RehearsalsScreenState extends ConsumerState<RehearsalsScreen> {
               ),
             )
           : rehearsals.isEmpty
-          ? const Center(child: Text("Žiadne skúšky"))
-          : ListView.builder(
-              itemCount: rehearsals.length,
-              itemBuilder: (ctx, i) {
-                final r = rehearsals[i];
+              ? const Center(child: Text("Žiadne skúšky"))
+              : ListView.builder(
+                  itemCount: rehearsals.length,
+                  itemBuilder: (ctx, i) {
+                    final r = rehearsals[i];
 
-                final pres = presentCount[r.id!] ?? 0;
-                final act = activeCount[r.id!] ?? 0;
+                    final pres = presentCount[r.id!] ?? 0;
+                    final act = activeCount[r.id!] ?? 0;
 
-                return ListTile(
-                  leading: const Icon(Icons.event),
-
-                  title: Text(
-                    "${r.date.day.toString().padLeft(2, '0')}."
-                    "${r.date.month.toString().padLeft(2, '0')}."
-                    "${r.date.year}  "
-                    "${r.fromTime} – ${r.toTime}"
-                    "${r.place.isNotEmpty ? "  ·  ${r.place}" : ""}",
-                  ),
-
-                  subtitle: Text("👥 $pres / $act"),
-
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // ✏️ Edit
-                      IconButton(
-                        icon: const Icon(Icons.edit),
-                        tooltip: "Upraviť skúšku",
-                        onPressed: () {
-                          showModalBottomSheet(
-                            context: context,
-                            isScrollControlled: true,
-                            useSafeArea: true,
-                            builder: (_) {
-                              return AddEditRehearsalSheet(
-                                existing: r,
-                                onSubmit: (updated) async {
-                                  final actions = ref.read(rehearsalsActionsProvider,);
-                                  await actions.update(updated);
-                                  await _load();
+                    return ListTile(
+                      leading: const Icon(Icons.event),
+                      title: Text(
+                        "${r.date.day.toString().padLeft(2, '0')}."
+                        "${r.date.month.toString().padLeft(2, '0')}."
+                        "${r.date.year}  "
+                        "${r.fromTime} – ${r.toTime}"
+                        "${r.place.isNotEmpty ? "  ·  ${r.place}" : ""}",
+                      ),
+                      subtitle: Text("👥 $pres / $act"),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit),
+                            tooltip: "Upraviť skúšku",
+                            onPressed: () {
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                useSafeArea: true,
+                                builder: (_) {
+                                  return AddEditRehearsalSheet(
+                                    existing: r,
+                                    onSubmit: (updated) async {
+                                      final actions =
+                                          ref.read(rehearsalsActionsProvider);
+                                      await actions.update(updated);
+                                      await _load();
+                                    },
+                                  );
                                 },
-                              );
+                              ).then((_) => _load());
                             },
-                          ).then((_) => _load());
-                        },
-                      ),
+                          ),
+                          if (pres == 0)
+                            IconButton(
+                              icon: const Icon(Icons.delete),
+                              tooltip: "Zmazať skúšku",
+                              onPressed: () async {
+                                final confirm =
+                                    await showDialog<bool>(
+                                  context: context,
+                                  builder: (_) => AlertDialog(
+                                    title:
+                                        const Text("Zmazať skúšku"),
+                                    content: const Text(
+                                      "Naozaj chceš zmazať túto skúšku?",
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        child: const Text("Zrušiť"),
+                                        onPressed: () =>
+                                            Navigator.pop(context, false),
+                                      ),
+                                      FilledButton(
+                                        child: const Text("Zmazať"),
+                                        onPressed: () =>
+                                            Navigator.pop(context, true),
+                                      ),
+                                    ],
+                                  ),
+                                );
 
-                      // 🗑 Delete – len ak attendance = 0
-                      if (pres == 0)
-                        IconButton(
-                          icon: const Icon(Icons.delete),
-                          tooltip: "Zmazať skúšku",
-                          onPressed: () async {
-                            final confirm = await showDialog<bool>(
-                              context: context,
-                              builder: (_) => AlertDialog(
-                                title: const Text("Zmazať skúšku"),
-                                content: const Text(
-                                  "Naozaj chceš zmazať túto skúšku?",
+                                if (confirm == true) {
+                                  final actions =
+                                      ref.read(rehearsalsActionsProvider);
+                                  await actions.delete(r.id!);
+                                  await _load();
+                                }
+                              },
+                            ),
+                          IconButton(
+                            icon: const Icon(Icons.music_note),
+                            tooltip: "Repertoár",
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      RehearsalRepertoireScreen(
+                                          rehearsal: r),
                                 ),
-                                actions: [
-                                  TextButton(
-                                    child: const Text("Zrušiť"),
-                                    onPressed: () =>
-                                        Navigator.pop(context, false),
-                                  ),
-                                  FilledButton(
-                                    child: const Text("Zmazať"),
-                                    onPressed: () =>
-                                        Navigator.pop(context, true),
-                                  ),
-                                ],
-                              ),
+                              ).then((_) => _load());
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.people),
+                            tooltip: "Dochádzka",
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      RehearsalAttendanceScreen(
+                                          rehearsal: r),
+                                ),
+                              ).then((_) => _load());
+                            },
+                          ),
+                        ],
+                      ),
+                      onTap: () {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          useSafeArea: true,
+                          builder: (_) {
+                            return AddEditRehearsalSheet(
+                              existing: r,
+                              onSubmit: (updated) async {
+                                final actions =
+                                    ref.read(rehearsalsActionsProvider);
+                                await actions.update(updated);
+                                await _load();
+                              },
                             );
-
-                            if (confirm == true) {
-                              final actions = ref.read(rehearsalsActionsProvider,);
-                              await actions.delete(r.id!);
-                              await _load();
-                            }
                           },
-                        ),
-
-                      // 🎼 Repertoár
-                      IconButton(
-                        icon: const Icon(Icons.music_note),
-                        tooltip: "Repertoár",
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => RehearsalRepertoireScreen(rehearsal: r),
-                            ),
-                          ).then((_) => _load());
-                        },
-                      ),
-
-                      // 👥 Attendance
-                      IconButton(
-                        icon: const Icon(Icons.people),
-                        tooltip: "Dochádzka",
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => RehearsalAttendanceScreen(rehearsal: r),
-                            ),
-                          ).then((_) => _load());
-                        },
-                      ),
-                    ],
-                  ),
-
-                  // Kliknutie na celú položku → EDIT
-                  onTap: () {
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      useSafeArea: true,
-                      builder: (_) {
-                        return AddEditRehearsalSheet(
-                          existing: r,
-                          onSubmit: (updated) async {
-                            final actions = ref.read(rehearsalsActionsProvider);
-                            await actions.update(updated);
-                            await _load();
-                          },
-                        );
+                        ).then((_) => _load());
                       },
-                    ).then((_) => _load());
+                    );
                   },
-                );
-              },
-            ),
+                ),
     );
   }
 }
