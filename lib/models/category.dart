@@ -5,6 +5,7 @@ class Category {
   final bool isDefault;
   final int singersCount;
 
+  // runtime-only (nie sú v DB)
   final int activeCount;
   final int inactiveCount;
 
@@ -41,9 +42,9 @@ class Category {
   factory Category.fromMap(Map<String, dynamic> map) {
     return Category(
       id: map['id'] as int?,
-      name: map['name'],
-      color: map['color'],
-      isDefault: map['isDefault'] == 1,
+      name: map['name'] as String,
+      color: map['color'] as int,
+      isDefault: (map['isDefault'] as int) == 1,
       singersCount: map['singersCount'] as int,
       activeCount: 0,
       inactiveCount: 0,
@@ -51,16 +52,15 @@ class Category {
   }
 
   Map<String, dynamic> toMap() {
-    final map = {
+    final map = <String, dynamic>{
       'name': name,
       'color': color,
-      'is_default': isDefault ? 1 : 0,
+      'isDefault': isDefault ? 1 : 0,
       'singersCount': singersCount,
     };
 
-    final v = id;
-    if (v != null) {
-      map['id'] = v;
+    if (id != null) {
+      map['id'] = id;
     }
 
     return map;

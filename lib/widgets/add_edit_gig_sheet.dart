@@ -7,7 +7,11 @@ class AddEditGigSheet extends StatefulWidget {
   final Gig? existing;
   final ValueChanged<Gig> onSubmit;
 
-  const AddEditGigSheet({super.key, required this.onSubmit, this.existing});
+  const AddEditGigSheet({
+    super.key,
+    required this.onSubmit,
+    this.existing,
+  });
 
   @override
   State<AddEditGigSheet> createState() => _AddEditGigSheetState();
@@ -18,8 +22,8 @@ class _AddEditGigSheetState extends State<AddEditGigSheet> {
 
   late TextEditingController _place;
   DateTime _date = DateTime.now();
-  TimeOfDay _from = const TimeOfDay(hour: 17, minute: 00);
-  TimeOfDay _to = const TimeOfDay(hour: 19, minute: 00);
+  TimeOfDay _from = const TimeOfDay(hour: 17, minute: 0);
+  TimeOfDay _to = const TimeOfDay(hour: 19, minute: 0);
 
   @override
   void initState() {
@@ -29,8 +33,8 @@ class _AddEditGigSheetState extends State<AddEditGigSheet> {
 
     if (widget.existing != null) {
       _date = widget.existing!.date;
-      _from = widget.existing!.fromTime;
-      _to = widget.existing!.toTime;
+      _from = _parseTime(widget.existing!.fromTime);
+      _to = _parseTime(widget.existing!.toTime);
     }
   }
 
@@ -38,6 +42,20 @@ class _AddEditGigSheetState extends State<AddEditGigSheet> {
   void dispose() {
     _place.dispose();
     super.dispose();
+  }
+
+  /// String "HH:MM" → TimeOfDay
+  TimeOfDay _parseTime(String value) {
+    final parts = value.split(':');
+    return TimeOfDay(
+      hour: int.parse(parts[0]),
+      minute: int.parse(parts[1]),
+    );
+  }
+
+  /// TimeOfDay → String "HH:MM"
+  String _formatTime(TimeOfDay t) {
+    return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
   }
 
   Future<void> pickDate() async {
@@ -56,11 +74,9 @@ class _AddEditGigSheetState extends State<AddEditGigSheet> {
     final t = await showTimePicker(
       context: context,
       initialTime: _from,
-      builder: (BuildContext context, Widget? child) {
+      builder: (context, child) {
         return MediaQuery(
-          data: MediaQuery.of(
-            context,
-          ).copyWith(textScaler: TextScaler.noScaling),
+          data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
           child: child ?? const SizedBox(),
         );
       },
@@ -74,11 +90,9 @@ class _AddEditGigSheetState extends State<AddEditGigSheet> {
     final t = await showTimePicker(
       context: context,
       initialTime: _to,
-      builder: (BuildContext context, Widget? child) {
+      builder: (context, child) {
         return MediaQuery(
-          data: MediaQuery.of(
-            context,
-          ).copyWith(textScaler: TextScaler.noScaling),
+          data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
           child: child ?? const SizedBox(),
         );
       },
@@ -94,8 +108,8 @@ class _AddEditGigSheetState extends State<AddEditGigSheet> {
     final g = Gig(
       id: widget.existing?.id,
       date: _date,
-      fromTime: _from,
-      toTime: _to,
+      fromTime: _formatTime(_from),
+      toTime: _formatTime(_to),
       place: _place.text.trim(),
       createdAt: widget.existing?.createdAt ?? DateTime.now(),
     );
@@ -123,10 +137,8 @@ class _AddEditGigSheetState extends State<AddEditGigSheet> {
               isEditing ? "Upraviť vystúpenie" : "Pridať vystúpenie",
               style: Theme.of(context).textTheme.headlineSmall,
             ),
-
             const SizedBox(height: 20),
 
-            // Miesto
             TextField(
               controller: _place,
               decoration: const InputDecoration(
@@ -136,7 +148,6 @@ class _AddEditGigSheetState extends State<AddEditGigSheet> {
             ),
             const SizedBox(height: 16),
 
-            // Dátum
             ListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text("Dátum"),
@@ -145,7 +156,6 @@ class _AddEditGigSheetState extends State<AddEditGigSheet> {
               onTap: pickDate,
             ),
 
-            // OD
             ListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text("Čas od"),
@@ -154,7 +164,6 @@ class _AddEditGigSheetState extends State<AddEditGigSheet> {
               onTap: pickFromTime,
             ),
 
-            // DO
             ListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text("Čas do"),

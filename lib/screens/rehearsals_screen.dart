@@ -184,7 +184,7 @@ class _RehearsalsScreenState extends ConsumerState<RehearsalsScreen> {
                     "${r.date.day.toString().padLeft(2, '0')}."
                     "${r.date.month.toString().padLeft(2, '0')}."
                     "${r.date.year}  "
-                    "${r.fromTime.format(context)} – ${r.toTime.format(context)}"
+                    "${r.fromTime} – ${r.toTime}"
                     "${r.place.isNotEmpty ? "  ·  ${r.place}" : ""}",
                   ),
 

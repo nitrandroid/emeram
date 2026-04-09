@@ -2,13 +2,14 @@ class SongCategory {
   final int? id;
   final String name;
   final int color;
+
+  // odvodená / runtime hodnota (nie je zdrojom pravdy DB)
   final int songsCount;
 
-  /// 🔥 Musí existovať!
   final bool isDefault;
 
   SongCategory({
-    required this.id,
+    this.id,
     required this.name,
     required this.color,
     required this.songsCount,
@@ -33,11 +34,26 @@ class SongCategory {
 
   factory SongCategory.fromMap(Map<String, dynamic> map) {
     return SongCategory(
-      id: map['id'] as int,
+      id: map['id'] as int?,
       name: map['name'] as String,
       color: map['color'] as int,
       songsCount: map['songsCount'] as int,
-      isDefault: (map['isDefault'] as int? ?? 0) == 1, // 🔥 tu sa to načíta
+      isDefault: (map['isDefault'] as int? ?? 0) == 1,
     );
+  }
+
+  Map<String, dynamic> toMap() {
+    final map = <String, dynamic>{
+      'name': name,
+      'color': color,
+      'songsCount': songsCount,
+      'isDefault': isDefault ? 1 : 0,
+    };
+
+    if (id != null) {
+      map['id'] = id;
+    }
+
+    return map;
   }
 }

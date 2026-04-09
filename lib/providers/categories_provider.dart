@@ -1,3 +1,4 @@
+// lib/providers/categories_provider.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/category.dart';
 import 'database_provider.dart';

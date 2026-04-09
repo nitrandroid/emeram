@@ -1,3 +1,4 @@
+// lib/screens/home_screen.dart
 import 'package:flutter/material.dart';
 import 'people_screen.dart';
 import 'songs_screen.dart';

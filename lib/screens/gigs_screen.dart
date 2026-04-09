@@ -183,7 +183,7 @@ class _GigsScreenState extends ConsumerState<GigsScreen> {
                     "${g.date.day.toString().padLeft(2, '0')}."
                     "${g.date.month.toString().padLeft(2, '0')}."
                     "${g.date.year}  "
-                    "${g.fromTime.format(context)} – ${g.toTime.format(context)}"
+                    "${g.fromTime} – ${g.toTime}"
                     "${g.place.isNotEmpty ? "  ·  ${g.place}" : ""}",
                   ),
 

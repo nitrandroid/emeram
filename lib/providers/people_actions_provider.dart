@@ -1,3 +1,4 @@
+// lib/providers/people_actions_provider.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/database.dart';
 import '../models/person.dart';

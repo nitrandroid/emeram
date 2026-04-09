@@ -1,7 +1,8 @@
 import 'dart:io';
-import 'package:flutter/services.dart'; // ← TOTO PRIDAJ
+import 'package:flutter/services.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../models/category.dart';
 import '../models/person.dart';
@@ -30,32 +31,22 @@ class AppDatabase {
   }
 
   Future<Database> _initDb() async {
-    // ✅ multiplatform správna cesta
-    late String path;
+    final supportDir = await getApplicationSupportDirectory();
+    final appDir = join(supportDir.path, 'emeram');
 
-    if (Platform.isAndroid || Platform.isIOS) {
-      final dbDir = await getDatabasesPath();
-      path = join(dbDir, 'emeram.db');
-    } else {
-      final dbDir = join(Directory.current.path, 'dev_data');
-      await Directory(dbDir).create(recursive: true);
-      path = join(dbDir, 'emeram.db');
-    }
+    await Directory(appDir).create(recursive: true);
 
-    // Skontroluj, či runtime databáza existuje
+    final path = join(appDir, 'emeram.db');
+
     final exists = await databaseExists(path);
 
-    // Ak neexistuje → skopíruj ju z assets
     if (!exists) {
-      try {
-        final data = await rootBundle.load('assets/db/emeram.db');
-        final bytes = data.buffer.asUint8List(
-          data.offsetInBytes,
-          data.lengthInBytes,
-        );
-
-        await File(path).writeAsBytes(bytes, flush: true);
-      } catch (_) {}
+      final data = await rootBundle.load('assets/db/emeram.db');
+      final bytes = data.buffer.asUint8List(
+        data.offsetInBytes,
+        data.lengthInBytes,
+      );
+      await File(path).writeAsBytes(bytes, flush: true);
     }
 
     return await openDatabase(
@@ -182,11 +173,9 @@ class AppDatabase {
     );
   }
 
-  /// 🔥 dôležité: vráti TRUE ak sa podarilo zmazať, FALSE ak má dochádzku
   Future<bool> deletePerson(int id) async {
     final db = await database;
 
-    // 1) Skontroluj attendance
     final attendanceRows = await db.query(
       'rehearsal_attendance',
       where: 'personId = ?',
@@ -194,13 +183,10 @@ class AppDatabase {
     );
 
     if (attendanceRows.isNotEmpty) {
-      // osoba má dochádzku → nesmie sa zmazať
       return false;
     }
 
-    // 2) Bezpečné mazanie
     await db.delete('persons', where: 'id = ?', whereArgs: [id]);
-
     return true;
   }
 
@@ -251,7 +237,6 @@ class AppDatabase {
   Future<bool> deleteSongCategory(int id) async {
     final db = await database;
 
-    // BLOCK DEFAULT CATEGORY
     final found = await db.query(
       'song_categories',
       where: 'id = ?',
@@ -261,7 +246,6 @@ class AppDatabase {
       return false;
     }
 
-    // BLOCK CATEGORY USED BY SONGS
     final used = await db.query(
       'songs',
       where: 'categoryId = ?',
@@ -326,8 +310,8 @@ class AppDatabase {
     final db = await database;
     return await db.insert('rehearsals', {
       'date': r.date.toIso8601String(),
-      'fromTime': "${r.fromTime.hour}:${r.fromTime.minute}",
-      'toTime': "${r.toTime.hour}:${r.toTime.minute}",
+      'fromTime': r.fromTime, // ✅ už STRING "HH:MM"
+      'toTime': r.toTime, // ✅ už STRING "HH:MM"
       'place': r.place,
       'createdAt': r.createdAt.toIso8601String(),
     });
@@ -359,8 +343,8 @@ class AppDatabase {
       'rehearsals',
       {
         'date': r.date.toIso8601String(),
-        'fromTime': "${r.fromTime.hour}:${r.fromTime.minute}",
-        'toTime': "${r.toTime.hour}:${r.toTime.minute}",
+        'fromTime': r.fromTime, // ✅ už STRING "HH:MM"
+        'toTime': r.toTime, // ✅ už STRING "HH:MM"
         'place': r.place,
       },
       where: 'id = ?',
@@ -469,15 +453,15 @@ class AppDatabase {
   }
 
   // ============================================================
-  // GIGSS CRUD
+  // GIGS CRUD
   // ============================================================
 
   Future<int> addGig(Gig g) async {
     final db = await database;
     return await db.insert('gigs', {
       'date': g.date.toIso8601String(),
-      'fromTime': "${g.fromTime.hour}:${g.fromTime.minute}",
-      'toTime': "${g.toTime.hour}:${g.toTime.minute}",
+      'fromTime': g.fromTime, // ✅ už STRING "HH:MM"
+      'toTime': g.toTime, // ✅ už STRING "HH:MM"
       'place': g.place,
       'createdAt': g.createdAt.toIso8601String(),
     });
@@ -489,8 +473,8 @@ class AppDatabase {
       'gigs',
       {
         'date': g.date.toIso8601String(),
-        'fromTime': "${g.fromTime.hour}:${g.fromTime.minute}",
-        'toTime': "${g.toTime.hour}:${g.toTime.minute}",
+        'fromTime': g.fromTime, // ✅ už STRING "HH:MM"
+      'toTime': g.toTime, // ✅ už STRING "HH:MM"
         'place': g.place,
       },
       where: 'id = ?',
