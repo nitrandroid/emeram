@@ -474,7 +474,7 @@ class AppDatabase {
       {
         'date': g.date.toIso8601String(),
         'fromTime': g.fromTime, // ✅ už STRING "HH:MM"
-      'toTime': g.toTime, // ✅ už STRING "HH:MM"
+        'toTime': g.toTime, // ✅ už STRING "HH:MM"
         'place': g.place,
       },
       where: 'id = ?',
@@ -575,36 +575,47 @@ class AppDatabase {
 
     return await db.rawQuery(
       '''
-      SELECT 
-        p.id,
-        p.firstName,
-        p.lastName,
-        COUNT(DISTINCT ra.rehearsalId) as attended,
-        (
-          SELECT COUNT(*)
-          FROM rehearsals r2
-          WHERE (? IS NULL OR strftime('%Y', r2.date) = ?)
-          AND (
-            (p.fromDate IS NULL OR p.fromDate <= r2.date) AND
-            (p.toDate IS NULL OR p.toDate >= r2.date)
-          )
-        ) as total
-      FROM persons p
-      LEFT JOIN rehearsal_attendance ra 
-        ON ra.personId = p.id
-      LEFT JOIN rehearsals r 
-        ON r.id = ra.rehearsalId
-        AND (? IS NULL OR strftime('%Y', r.date) = ?)
-      GROUP BY p.id
-      ORDER BY 
-        CASE 
-          WHEN total = 0 THEN 0 
-          ELSE CAST(attended AS REAL) / total 
-        END DESC,
-        p.lastName ASC,
-        p.firstName ASC
+    SELECT
+      p.id,
+      p.firstName,
+      p.lastName,
+
+      COUNT(DISTINCT r.id) AS attended,
+
+      (
+        SELECT COUNT(*)
+        FROM rehearsals r2
+        WHERE
+          (? IS NULL OR strftime('%Y', r2.date) = ?)
+          AND (p.fromDate IS NULL OR p.fromDate <= r2.date)
+          AND (p.toDate IS NULL OR p.toDate >= r2.date)
+      ) AS total
+
+    FROM persons p
+    LEFT JOIN rehearsal_attendance ra
+      ON ra.personId = p.id
+    LEFT JOIN rehearsals r
+      ON r.id = ra.rehearsalId
+      AND (? IS NULL OR strftime('%Y', r.date) = ?)
+
+    WHERE
+      ? IS NULL
+      OR (
+        (p.fromDate IS NULL OR p.fromDate <= date(? || '-12-31'))
+        AND (p.toDate IS NULL OR p.toDate >= date(? || '-01-01'))
+      )
+
+    GROUP BY p.id
     ''',
-      [year?.toString(), year?.toString(), year?.toString(), year?.toString()],
+      [
+        year?.toString(),
+        year?.toString(),
+        year?.toString(),
+        year?.toString(),
+        year?.toString(),
+        year?.toString(),
+        year?.toString(),
+      ],
     );
   }
 
@@ -613,30 +624,47 @@ class AppDatabase {
 
     return await db.rawQuery(
       '''
-      SELECT 
-        p.id,
-        p.firstName,
-        p.lastName,
-        COUNT(DISTINCT ga.gigId) as attended,
-        (
-          SELECT COUNT(*)
-          FROM gigs g2
-          WHERE (? IS NULL OR strftime('%Y', g2.date) = ?)
-          AND (
-            (p.fromDate IS NULL OR p.fromDate <= g2.date) AND
-            (p.toDate IS NULL OR p.toDate >= g2.date)
-          )
-        ) as total
-      FROM persons p
-      LEFT JOIN gig_attendance ga 
-        ON ga.personId = p.id
-      LEFT JOIN gigs g 
-        ON g.id = ga.gigId
-        AND (? IS NULL OR strftime('%Y', g.date) = ?)
-      GROUP BY p.id
-      ORDER BY attended DESC
+    SELECT
+      p.id,
+      p.firstName,
+      p.lastName,
+
+      COUNT(DISTINCT g.id) AS attended,
+
+      (
+        SELECT COUNT(*)
+        FROM gigs g2
+        WHERE
+          (? IS NULL OR strftime('%Y', g2.date) = ?)
+          AND (p.fromDate IS NULL OR p.fromDate <= g2.date)
+          AND (p.toDate IS NULL OR p.toDate >= g2.date)
+      ) AS total
+
+    FROM persons p
+    LEFT JOIN gig_attendance ga
+      ON ga.personId = p.id
+    LEFT JOIN gigs g
+      ON g.id = ga.gigId
+      AND (? IS NULL OR strftime('%Y', g.date) = ?)
+
+    WHERE
+      ? IS NULL
+      OR (
+        (p.fromDate IS NULL OR p.fromDate <= date(? || '-12-31'))
+        AND (p.toDate IS NULL OR p.toDate >= date(? || '-01-01'))
+      )
+
+    GROUP BY p.id
     ''',
-      [year?.toString(), year?.toString(), year?.toString(), year?.toString()],
+      [
+        year?.toString(),
+        year?.toString(),
+        year?.toString(),
+        year?.toString(),
+        year?.toString(),
+        year?.toString(),
+        year?.toString(),
+      ],
     );
   }
 }
