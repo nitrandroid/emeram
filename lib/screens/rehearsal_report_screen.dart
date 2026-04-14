@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/database_provider.dart';
-import '../utils/slovak_sort.dart';
 import '../utils/report_pdf.dart';
 import '../services/report_year_filter_mixin.dart';
 import '../utils/report_sort.dart';

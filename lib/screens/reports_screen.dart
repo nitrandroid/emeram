@@ -36,22 +36,6 @@ class ReportsScreen extends StatelessWidget {
               );
             },
           ),
-          ListTile(
-            leading: const Icon(Icons.people),
-            title: const Text("Dochádzka podľa osôb"),
-            subtitle: const Text("Súhrnné štatistiky"),
-            onTap: () {
-              // TODO
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.music_note),
-            title: const Text("Použitie skladieb"),
-            subtitle: const Text("Najčastejšie hrané skladby"),
-            onTap: () {
-              // TODO
-            },
-          ),
         ],
       ),
     );
