@@ -30,6 +30,20 @@ class AppDatabase {
     }
   }
 
+  /// Zlúči (zleje) WAL záznamy do hlavného .db súboru.
+  ///
+  /// Túto metódu treba volať:
+  /// - pred exportom databázy
+  /// - pred kopírovaním .db súboru
+  /// - pred budúcim automatickým syncom
+  Future<void> flushWalToDb() async {
+    final db = await database;
+
+    // Zabezpečí, že všetky zmeny z WAL
+    // sú zapísané v hlavnom .db súbore
+    await db.execute('PRAGMA wal_checkpoint(FULL);');
+  }
+
   Future<Database> _initDb() async {
     final supportDir = await getApplicationSupportDirectory();
     final appDir = join(supportDir.path, 'emeram');

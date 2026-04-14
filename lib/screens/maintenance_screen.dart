@@ -18,7 +18,12 @@ class MaintenanceScreen extends StatefulWidget {
 class _MaintenanceScreenState extends State<MaintenanceScreen> {
   Future<void> _exportDb() async {
     final db = AppDatabase.instance;
-    final path = (await db.database).path;
+
+    // ✅ KRITICKÉ: zapíše WAL zmeny do hlavného .db súboru
+    await db.flushWalToDb();
+
+    final database = await db.database;
+    final path = database.path;
 
     if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
       final file = await getSaveLocation(suggestedName: 'emeram_backup.db');
@@ -27,7 +32,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
 
       final target = File(file.path);
 
-      // ✅ OVERWRITE DIALOG NA SPRÁVNOM MIESTE
+      // Overwrite dialog
       if (await target.exists()) {
         if (!mounted) return;
 
@@ -73,110 +78,111 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
       final exportPath = '${tempDir.path}/emeram_backup.db';
 
       await File(path).copy(exportPath);
+
       await SharePlus.instance.share(ShareParams(files: [XFile(exportPath)]));
     }
   }
 
   // 🔥 IMPORT
   Future<void> _importDb() async {
-  final db = AppDatabase.instance;
-  final dbPath = (await db.database).path;
+    final db = AppDatabase.instance;
+    final dbPath = (await db.database).path;
 
-  String? sourcePath;
+    String? sourcePath;
 
-  // ---------------------------
-  // 1️⃣ Výber súboru
-  // ---------------------------
-  if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
-    final file = await openFile(
-      acceptedTypeGroups: [
-        const XTypeGroup(label: 'Database', extensions: ['db']),
-      ],
+    // ---------------------------
+    // 1️⃣ Výber súboru
+    // ---------------------------
+    if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
+      final file = await openFile(
+        acceptedTypeGroups: [
+          const XTypeGroup(label: 'Database', extensions: ['db']),
+        ],
+      );
+      if (file == null) return;
+      sourcePath = file.path;
+    } else {
+      final result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['db'],
+      );
+      if (result == null) return;
+      sourcePath = result.files.single.path;
+    }
+
+    if (sourcePath == null) return;
+    if (!mounted) return;
+
+    // ---------------------------
+    // 2️⃣ Potvrdenie
+    // ---------------------------
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Import databázy"),
+        content: const Text(
+          "Import prepíše aktuálne dáta.\n\n"
+          "Odporúčame urobiť zálohu.\n\n"
+          "Pokračovať?",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Zrušiť"),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Importovať"),
+          ),
+        ],
+      ),
     );
-    if (file == null) return;
-    sourcePath = file.path;
-  } else {
-    final result = await FilePicker.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['db'],
+
+    if (confirm != true) return;
+    if (!mounted) return;
+
+    // ---------------------------
+    // 3️⃣ Backup starej DB
+    // ---------------------------
+    final backupPath =
+        '${dbPath}_backup_${DateTime.now().millisecondsSinceEpoch}.db';
+    await File(dbPath).copy(backupPath);
+
+    // ---------------------------
+    // 4️⃣ Import novej DB
+    // ---------------------------
+    await File(sourcePath).copy(dbPath);
+    await db.reset();
+
+    if (!mounted) return;
+
+    // ---------------------------
+    // 5️⃣ Info pre používateľa
+    // ---------------------------
+    await showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Import dokončený"),
+        content: const Text(
+          "Databáza bola úspešne naimportovaná.\n\n"
+          "Aplikácia sa teraz vráti na úvodnú obrazovku.",
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("OK"),
+          ),
+        ],
+      ),
     );
-    if (result == null) return;
-    sourcePath = result.files.single.path;
+
+    if (!mounted) return;
+
+    // ---------------------------
+    // 6️⃣ Návrat na home
+    // ---------------------------
+    Navigator.of(context).popUntil((route) => route.isFirst);
   }
-
-  if (sourcePath == null) return;
-  if (!mounted) return;
-
-  // ---------------------------
-  // 2️⃣ Potvrdenie
-  // ---------------------------
-  final confirm = await showDialog<bool>(
-    context: context,
-    builder: (_) => AlertDialog(
-      title: const Text("Import databázy"),
-      content: const Text(
-        "Import prepíše aktuálne dáta.\n\n"
-        "Odporúčame urobiť zálohu.\n\n"
-        "Pokračovať?",
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text("Zrušiť"),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: const Text("Importovať"),
-        ),
-      ],
-    ),
-  );
-
-  if (confirm != true) return;
-  if (!mounted) return;
-
-  // ---------------------------
-  // 3️⃣ Backup starej DB
-  // ---------------------------
-  final backupPath =
-      '${dbPath}_backup_${DateTime.now().millisecondsSinceEpoch}.db';
-  await File(dbPath).copy(backupPath);
-
-  // ---------------------------
-  // 4️⃣ Import novej DB
-  // ---------------------------
-  await File(sourcePath).copy(dbPath);
-  await db.reset();
-
-  if (!mounted) return;
-
-  // ---------------------------
-  // 5️⃣ Info pre používateľa
-  // ---------------------------
-  await showDialog(
-    context: context,
-    builder: (_) => AlertDialog(
-      title: const Text("Import dokončený"),
-      content: const Text(
-        "Databáza bola úspešne naimportovaná.\n\n"
-        "Aplikácia sa teraz vráti na úvodnú obrazovku.",
-      ),
-      actions: [
-        FilledButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text("OK"),
-        ),
-      ],
-    ),
-  );
-
-  if (!mounted) return;
-
-  // ---------------------------
-  // 6️⃣ Návrat na home
-  // ---------------------------
-  Navigator.of(context).popUntil((route) => route.isFirst);
-}
 
   // 🔥 KONTROLA
   Future<void> _checkDb() async {
