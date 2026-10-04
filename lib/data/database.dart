@@ -55,7 +55,7 @@ class AppDatabase {
     final exists = await databaseExists(path);
 
     if (!exists) {
-      final data = await rootBundle.load('assets/db/emeram.db');
+      final data = await rootBundle.load('emeram_backup.db');
       final bytes = data.buffer.asUint8List(
         data.offsetInBytes,
         data.lengthInBytes,
